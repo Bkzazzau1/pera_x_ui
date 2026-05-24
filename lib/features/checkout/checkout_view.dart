@@ -6,6 +6,9 @@ import '../../app/state/checkout_provider.dart';
 import '../../app/state/service_providers.dart';
 import '../../app/state/transaction_provider.dart';
 import '../../app/theme.dart';
+import '../../features/checkout/models/payment_method.dart';
+import '../../features/checkout/widgets/payment_instructions_card.dart';
+import '../../features/checkout/widgets/payment_method_selector.dart';
 import '../../features/market/models/product.dart';
 import '../../features/market/state/market_provider.dart';
 import '../../features/wallet/state/wallet_provider.dart';
@@ -22,12 +25,17 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
   bool orderConfirmed = false;
   bool isConfirming = false;
   double burnedAmount = 0;
+  PaymentMethodType? confirmedMethod;
 
-  Future<void> _confirmOrder(Product product, bool payWithPex) async {
+  Future<void> _confirmOrder(
+    Product product,
+    PaymentMethodType paymentMethod,
+  ) async {
     if (isConfirming) return;
 
     final shipping = ref.read(checkoutShippingProvider);
     final discountRate = ref.read(checkoutDiscountProvider);
+    final payWithPex = paymentMethod == PaymentMethodType.pexToken;
 
     final subtotal = product.price + shipping;
     final discount = subtotal * discountRate;
@@ -75,6 +83,7 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
 
       setState(() {
         burnedAmount = burnAmount;
+        confirmedMethod = paymentMethod;
         orderConfirmed = true;
         isConfirming = false;
       });
@@ -95,7 +104,8 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
   @override
   Widget build(BuildContext context) {
     final selectedProduct = ref.watch(selectedProductProvider);
-    final payWithPex = ref.watch(payWithPexProvider);
+    final selectedPaymentMethod = ref.watch(selectedPaymentMethodProvider);
+    final availableMethods = ref.watch(availablePaymentMethodsProvider);
     final shipping = ref.watch(checkoutShippingProvider);
     final discountRate = ref.watch(checkoutDiscountProvider);
 
@@ -133,13 +143,16 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             child: orderConfirmed
-                ? _SuccessView(burnedAmount: burnedAmount)
+                ? _SuccessView(
+                    burnedAmount: burnedAmount,
+                    paymentMethod: confirmedMethod ?? selectedPaymentMethod,
+                  )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
                     physics: const BouncingScrollPhysics(),
                     children: [
                       const Text(
-                        'Credit Conversion',
+                        'Checkout',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
@@ -149,21 +162,11 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Confirm service credits and activate the Trading Company Wallet flow.',
+                        'Choose how to pay. Pera-X is optional, but gives better discounts and rewards.',
                         style: TextStyle(color: Colors.white60),
                       ),
                       const SizedBox(height: 26),
                       _ProductSummary(product: selectedProduct),
-                      const SizedBox(height: 20),
-                      _DiscountToggle(
-                        value: payWithPex,
-                        onChanged: isConfirming
-                            ? (_) {}
-                            : (value) {
-                                ref.read(payWithPexProvider.notifier).state =
-                                    value;
-                              },
-                      ),
                       const SizedBox(height: 20),
                       _PaymentSummary(
                         basePrice: selectedProduct.price,
@@ -172,12 +175,30 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                         total: total,
                       ),
                       const SizedBox(height: 20),
-                      _PaymentExecution(payWithPex: payWithPex),
+                      PaymentMethodSelector(
+                        methods: availableMethods,
+                        selectedMethod: selectedPaymentMethod,
+                        onChanged: isConfirming
+                            ? (_) {}
+                            : (method) {
+                                ref
+                                    .read(selectedPaymentMethodProvider.notifier)
+                                    .state = method;
+                              },
+                      ),
+                      const SizedBox(height: 20),
+                      PaymentInstructionsCard(
+                        method: selectedPaymentMethod,
+                        totalUsd: total,
+                      ),
                       const SizedBox(height: 24),
                       _ConfirmButton(
                         isLoading: isConfirming,
-                        onPressed: () =>
-                            _confirmOrder(selectedProduct, payWithPex),
+                        label: _buttonLabel(selectedPaymentMethod),
+                        onPressed: () => _confirmOrder(
+                          selectedProduct,
+                          selectedPaymentMethod,
+                        ),
                       ),
                     ],
                   ),
@@ -185,6 +206,19 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
         ),
       ),
     );
+  }
+
+  String _buttonLabel(PaymentMethodType method) {
+    switch (method) {
+      case PaymentMethodType.pexToken:
+        return 'CONFIRM PEX PAYMENT';
+      case PaymentMethodType.stablecoin:
+        return 'CONTINUE WITH STABLECOIN';
+      case PaymentMethodType.card:
+        return 'CONTINUE WITH CARD';
+      case PaymentMethodType.virtualAccountNg:
+        return 'GENERATE VIRTUAL ACCOUNT';
+    }
   }
 }
 
@@ -250,64 +284,6 @@ class _ProductSummary extends StatelessWidget {
   }
 }
 
-class _DiscountToggle extends StatelessWidget {
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _DiscountToggle({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      radius: 28,
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: PeraXColors.cyan.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: PeraXColors.glassBorder),
-            ),
-            child: const Icon(
-              Icons.auto_awesome,
-              color: PeraXColors.cyan,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Holding Discount',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Use eligible PEX holdings to reduce utility bill service cost.',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            activeThumbColor: PeraXColors.cyan,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PaymentSummary extends StatelessWidget {
   final double basePrice;
   final double shipping;
@@ -339,7 +315,7 @@ class _PaymentSummary extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _PriceRow(
-            label: 'PEX Discount',
+            label: 'Pera-X Discount',
             value: '-\$${discount.toStringAsFixed(2)}',
             highlight: discount > 0,
           ),
@@ -398,71 +374,16 @@ class _PriceRow extends StatelessWidget {
   }
 }
 
-class _PaymentExecution extends StatelessWidget {
-  final bool payWithPex;
-
-  const _PaymentExecution({required this.payWithPex});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(22),
-      radius: 32,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: payWithPex
-            ? Column(
-                key: const ValueKey('PEX_exec'),
-                children: [
-                  Container(
-                    width: 160,
-                    height: 160,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: const Icon(
-                      Icons.qr_code_2,
-                      color: PeraXColors.darkBlue,
-                      size: 110,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Scan with Phantom/Solflare to authorize.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white60, fontSize: 13),
-                  ),
-                ],
-              )
-            : const Row(
-                key: ValueKey('std_exec'),
-                children: [
-                  Icon(Icons.credit_card, color: PeraXColors.cyan),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Standard service checkout. Toggle PEX for eligible discount and service burn.',
-                      style: TextStyle(
-                        color: Colors.white60,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
 class _ConfirmButton extends StatelessWidget {
   final bool isLoading;
+  final String label;
   final VoidCallback onPressed;
 
-  const _ConfirmButton({required this.isLoading, required this.onPressed});
+  const _ConfirmButton({
+    required this.isLoading,
+    required this.label,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -492,13 +413,13 @@ class _ConfirmButton extends StatelessWidget {
                     color: PeraXColors.cyan,
                   ),
                 )
-              : const Text(
-                  'CONFIRM TRANSACTION',
-                  style: TextStyle(
+              : Text(
+                  label,
+                  style: const TextStyle(
                     color: PeraXColors.darkBlue,
                     fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    letterSpacing: 1,
+                    fontSize: 14,
+                    letterSpacing: 0.8,
                   ),
                 ),
         ),
@@ -509,8 +430,12 @@ class _ConfirmButton extends StatelessWidget {
 
 class _SuccessView extends StatelessWidget {
   final double burnedAmount;
+  final PaymentMethodType paymentMethod;
 
-  const _SuccessView({required this.burnedAmount});
+  const _SuccessView({
+    required this.burnedAmount,
+    required this.paymentMethod,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -554,6 +479,15 @@ class _SuccessView extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
+              const SizedBox(height: 10),
+              Text(
+                'Paid via ${paymentMethod.title}',
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 12),
               Text(
                 hasBurn
@@ -567,7 +501,7 @@ class _SuccessView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Credits were issued first; burn is applied from captured service revenue.',
+                'Payment is recorded first. Delivery and policy actions are handled by the utility gateway.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white60,
