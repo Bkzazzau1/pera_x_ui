@@ -10,6 +10,7 @@ import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../wallet/state/wallet_provider.dart';
 import 'data/ai_service.dart';
+import 'widgets/ai_tool_flow_card.dart';
 
 class AiLabView extends ConsumerStatefulWidget {
   const AiLabView({super.key});
@@ -132,6 +133,11 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
               }),
             ),
             const SizedBox(height: 16),
+            AiToolFlowCard(
+              tool: selectedTool,
+              walletBalance: wallet.pex,
+            ),
+            const SizedBox(height: 16),
             _DocumentUploadCard(
               file: selectedFile,
               onPickDocument: _pickDocument,
@@ -176,7 +182,7 @@ class _AiLabHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'AI LAB',
+                'AGENTIC AI LAB',
                 style: TextStyle(
                   color: PeraXColors.cyan,
                   fontSize: 12,
@@ -196,7 +202,7 @@ class _AiLabHeader extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'AI detector, plagiarism checker, and humanizer for uploaded documents.',
+                'AI Detector, Humanizer AI, and Plagiarism Checker with token-gated access.',
                 style: TextStyle(
                   color: Colors.white54,
                   fontSize: 13,
@@ -399,7 +405,7 @@ class _OptionalNotes extends StatelessWidget {
       maxLines: 5,
       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
-        hintText: 'Optional instructions or pasted text...',
+        hintText: 'Optional instructions, target tone, or pasted text...',
         hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
         fillColor: PeraXColors.darkBlue.withValues(alpha: 0.45),
@@ -472,7 +478,7 @@ class _ProcessingState extends StatelessWidget {
           SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Document is being processed. Result will appear below.',
+              'Backend is confirming token access and processing the AI task.',
               style: TextStyle(
                 color: Colors.white70,
                 fontWeight: FontWeight.w700,
