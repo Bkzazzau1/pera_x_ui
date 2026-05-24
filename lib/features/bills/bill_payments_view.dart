@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/state/checkout_provider.dart';
 import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../market/models/product.dart';
@@ -23,9 +24,15 @@ class BillPaymentsView extends ConsumerWidget {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(20, 24, 20, 14),
-              sliver: SliverToBoxAdapter(child: _BillsHeader()),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
+              sliver: SliverToBoxAdapter(
+                child: _BillsHeader(
+                  onEligibleCountrySelected: () {
+                    ref.read(checkoutCountryCodeProvider.notifier).state = 'NG';
+                  },
+                ),
+              ),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
@@ -48,6 +55,8 @@ class BillPaymentsView extends ConsumerWidget {
                         return _BillProductCard(
                           product: product,
                           onPay: () {
+                            ref.read(checkoutCountryCodeProvider.notifier).state =
+                                'NG';
                             ref.read(selectedProductProvider.notifier).state =
                                 product;
                             context.go('/checkout');
@@ -64,7 +73,9 @@ class BillPaymentsView extends ConsumerWidget {
 }
 
 class _BillsHeader extends StatelessWidget {
-  const _BillsHeader();
+  final VoidCallback onEligibleCountrySelected;
+
+  const _BillsHeader({required this.onEligibleCountrySelected});
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +97,8 @@ class _BillsHeader extends StatelessWidget {
           style: TextStyle(color: Colors.white60, fontSize: 14, height: 1.45),
         ),
         const SizedBox(height: 22),
+        _EligibleCountrySelector(onSelected: onEligibleCountrySelected),
+        const SizedBox(height: 16),
         GlassCard(
           padding: const EdgeInsets.all(18),
           radius: 28,
@@ -116,6 +129,67 @@ class _BillsHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EligibleCountrySelector extends StatelessWidget {
+  final VoidCallback onSelected;
+
+  const _EligibleCountrySelector({required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      radius: 28,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Eligible Country',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Bill products and VA payment are shown only where rails are available.',
+            style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: onSelected,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: PeraXColors.cyan.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: PeraXColors.cyan.withValues(alpha: 0.35)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.public_rounded, color: PeraXColors.cyan),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Eligible Country',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.check_circle_rounded, color: PeraXColors.cyan),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
