@@ -11,6 +11,7 @@ import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../wallet/state/wallet_provider.dart';
 import 'data/ai_service.dart';
+import 'widgets/ai_access_status_card.dart';
 import 'widgets/ai_tool_flow_card.dart';
 
 class AiLabView extends ConsumerStatefulWidget {
@@ -136,6 +137,11 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
                 selectedTool = tool;
                 result = null;
               }),
+            ),
+            const SizedBox(height: 16),
+            AiAccessStatusCard(
+              walletBalance: wallet.pex,
+              selectedTool: selectedTool,
             ),
             const SizedBox(height: 16),
             AiToolFlowCard(
