@@ -8,14 +8,22 @@ import '../../shared/widgets/glass_card.dart';
 import '../market/models/product.dart';
 import '../market/state/market_provider.dart';
 
-class BillPaymentsView extends ConsumerWidget {
+class BillPaymentsView extends ConsumerStatefulWidget {
   const BillPaymentsView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BillPaymentsView> createState() => _BillPaymentsViewState();
+}
+
+class _BillPaymentsViewState extends ConsumerState<BillPaymentsView> {
+  String selectedBillCategory = 'Data';
+
+  @override
+  Widget build(BuildContext context) {
     final products = ref.watch(productsProvider);
     final billProducts = products
         .where((product) => product.category == 'Bill Credits')
+        .where((product) => _billCategoryFor(product) == selectedBillCategory)
         .toList();
 
     return Scaffold(
@@ -28,6 +36,10 @@ class BillPaymentsView extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
               sliver: SliverToBoxAdapter(
                 child: _BillsHeader(
+                  selectedCategory: selectedBillCategory,
+                  onCategorySelected: (category) {
+                    setState(() => selectedBillCategory = category);
+                  },
                   onEligibleCountrySelected: () {
                     ref.read(checkoutCountryCodeProvider.notifier).state = 'NG';
                   },
@@ -42,7 +54,7 @@ class BillPaymentsView extends ConsumerWidget {
                         padding: EdgeInsets.all(18),
                         radius: 28,
                         child: Text(
-                          'Bill payment products are not available yet.',
+                          'No bill products are available in this category yet.',
                           style: TextStyle(color: Colors.white60),
                         ),
                       ),
@@ -72,13 +84,37 @@ class BillPaymentsView extends ConsumerWidget {
   }
 }
 
+String _billCategoryFor(Product product) {
+  final id = product.id.toLowerCase();
+
+  if (id.contains('airtime')) return 'Airtime';
+  if (id.contains('electricity')) return 'Electricity';
+  if (id.contains('tv')) return 'TV';
+  if (id.contains('internet')) return 'Internet';
+  return 'Data';
+}
+
 class _BillsHeader extends StatelessWidget {
+  final String selectedCategory;
+  final ValueChanged<String> onCategorySelected;
   final VoidCallback onEligibleCountrySelected;
 
-  const _BillsHeader({required this.onEligibleCountrySelected});
+  const _BillsHeader({
+    required this.selectedCategory,
+    required this.onCategorySelected,
+    required this.onEligibleCountrySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
+    const categories = [
+      ('Data', Icons.signal_cellular_alt_outlined),
+      ('Airtime', Icons.phone_android_outlined),
+      ('Electricity', Icons.bolt_outlined),
+      ('TV', Icons.live_tv_outlined),
+      ('Internet', Icons.wifi_outlined),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -126,6 +162,54 @@ class _BillsHeader extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              final isActive = selectedCategory == category.$1;
+
+              return GestureDetector(
+                onTap: () => onCategorySelected(category.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 240),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? PeraXColors.cyan
+                        : PeraXColors.surfaceBlue.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: isActive ? Colors.white24 : PeraXColors.glassBorder,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        category.$2,
+                        color: isActive ? PeraXColors.darkBlue : Colors.white60,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        category.$1,
+                        style: TextStyle(
+                          color: isActive ? PeraXColors.darkBlue : Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
