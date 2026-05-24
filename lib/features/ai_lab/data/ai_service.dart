@@ -64,13 +64,15 @@ class AiService {
 
   Future<AiDocumentResultDto> analyzeDocument({
     required AiDocumentTool tool,
-    required String fileName,
-    required Uint8List fileBytes,
+    String? fileName,
+    Uint8List? fileBytes,
     String? pastedText,
   }) async {
+    final sourceName = fileName ?? 'Pasted Text';
+
     if (AppConfig.enableMockMode) {
       await Future<void>.delayed(const Duration(milliseconds: 800));
-      return _mockResult(tool, fileName);
+      return _mockResult(tool, sourceName);
     }
 
     final response = await _apiClient.post(
@@ -78,8 +80,9 @@ class AiService {
       body: {
         'tool': tool.apiValue,
         'fileName': fileName,
-        'fileBase64': base64Encode(fileBytes),
+        'fileBase64': fileBytes == null ? null : base64Encode(fileBytes),
         'text': pastedText,
+        'inputMode': fileBytes == null ? 'text' : 'document',
       },
     );
 
