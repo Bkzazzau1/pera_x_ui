@@ -32,7 +32,7 @@ extension PaymentMethodTypeX on PaymentMethodType {
       case PaymentMethodType.card:
         return 'Use debit/credit card through provider checkout.';
       case PaymentMethodType.virtualAccountNg:
-        return 'Nigeria only. Generate a virtual account for exact payment.';
+        return 'Eligible countries only. Generate a virtual account for exact payment.';
     }
   }
 
@@ -64,16 +64,16 @@ extension PaymentMethodTypeX on PaymentMethodType {
 
   bool get earnsPexDiscount => this == PaymentMethodType.pexToken;
 
-  bool get isNigeriaOnly => this == PaymentMethodType.virtualAccountNg;
+  bool get isEligibleCountryOnly => this == PaymentMethodType.virtualAccountNg;
 }
 
 List<PaymentMethodType> availablePaymentMethods({required String countryCode}) {
-  final isNigeria = countryCode.toUpperCase() == 'NG';
+  final hasEligibleVirtualAccount = countryCode.toUpperCase() == 'NG';
 
   return [
     PaymentMethodType.pexToken,
     PaymentMethodType.stablecoin,
     PaymentMethodType.card,
-    if (isNigeria) PaymentMethodType.virtualAccountNg,
+    if (hasEligibleVirtualAccount) PaymentMethodType.virtualAccountNg,
   ];
 }
