@@ -24,6 +24,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
   final TextEditingController _notesController = TextEditingController();
 
   AiDocumentTool selectedTool = AiDocumentTool.detector;
+  String selectedTone = 'Natural';
   PlatformFile? selectedFile;
   Uint8List? selectedBytes;
   AiDocumentResultDto? result;
@@ -77,13 +78,16 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
     try {
       final aiService = ref.read(aiServiceProvider);
+      final notes = _notesController.text.trim();
+      final toolInstructions = selectedTool == AiDocumentTool.humanizer
+          ? 'Humanizer tone: $selectedTone${notes.isEmpty ? '' : '\n$notes'}'
+          : notes;
+
       final response = await aiService.analyzeDocument(
         tool: selectedTool,
         fileName: file.name,
         fileBytes: bytes,
-        pastedText: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
+        pastedText: toolInstructions.trim().isEmpty ? null : toolInstructions.trim(),
       );
 
       if (!mounted) return;
@@ -138,6 +142,16 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
               tool: selectedTool,
               walletBalance: wallet.pex,
             ),
+            if (selectedTool == AiDocumentTool.humanizer) ...[
+              const SizedBox(height: 16),
+              _HumanizerToneSelector(
+                selectedTone: selectedTone,
+                onSelected: (tone) => setState(() {
+                  selectedTone = tone;
+                  result = null;
+                }),
+              ),
+            ],
             const SizedBox(height: 16),
             _DocumentUploadCard(
               file: selectedFile,
@@ -149,7 +163,11 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
               }),
             ),
             const SizedBox(height: 16),
-            _OptionalNotes(controller: _notesController),
+            _OptionalNotes(
+              controller: _notesController,
+              selectedTool: selectedTool,
+              selectedTone: selectedTone,
+            ),
             const SizedBox(height: 16),
             _RunPanel(
               tool: selectedTool,
@@ -319,6 +337,93 @@ class _ToolSelector extends StatelessWidget {
   }
 }
 
+class _HumanizerToneSelector extends StatelessWidget {
+  final String selectedTone;
+  final ValueChanged<String> onSelected;
+
+  const _HumanizerToneSelector({
+    required this.selectedTone,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const tones = [
+      ('Natural', Icons.person_outline_rounded),
+      ('Academic', Icons.school_outlined),
+      ('Professional', Icons.business_center_outlined),
+      ('Simple', Icons.lightbulb_outline_rounded),
+      ('Formal', Icons.balance_outlined),
+    ];
+
+    return GlassCard(
+      radius: 26,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Humanizer Tone',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Choose the tone before rewriting. Backend will receive this as part of the Humanizer AI instruction.',
+            style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: tones.map((tone) {
+              final isActive = selectedTone == tone.$1;
+              return GestureDetector(
+                onTap: () => onSelected(tone.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? PeraXColors.cyan
+                        : PeraXColors.surfaceBlue.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isActive ? Colors.white24 : PeraXColors.glassBorder,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        tone.$2,
+                        color: isActive ? PeraXColors.darkBlue : Colors.white60,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        tone.$1,
+                        style: TextStyle(
+                          color: isActive ? PeraXColors.darkBlue : Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DocumentUploadCard extends StatelessWidget {
   final PlatformFile? file;
   final VoidCallback onPickDocument;
@@ -395,18 +500,28 @@ class _DocumentUploadCard extends StatelessWidget {
 
 class _OptionalNotes extends StatelessWidget {
   final TextEditingController controller;
+  final AiDocumentTool selectedTool;
+  final String selectedTone;
 
-  const _OptionalNotes({required this.controller});
+  const _OptionalNotes({
+    required this.controller,
+    required this.selectedTool,
+    required this.selectedTone,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hintText = selectedTool == AiDocumentTool.humanizer
+        ? 'Optional instructions for $selectedTone tone...'
+        : 'Optional instructions or pasted text...';
+
     return TextField(
       controller: controller,
       minLines: 3,
       maxLines: 5,
       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
-        hintText: 'Optional instructions, target tone, or pasted text...',
+        hintText: hintText,
         hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
         fillColor: PeraXColors.darkBlue.withValues(alpha: 0.45),
