@@ -12,6 +12,7 @@ import '../../shared/widgets/glass_card.dart';
 import '../wallet/state/wallet_provider.dart';
 import 'data/ai_service.dart';
 import 'widgets/ai_access_status_card.dart';
+import 'widgets/ai_task_history_card.dart';
 import 'widgets/ai_tool_flow_card.dart';
 
 class AiLabView extends ConsumerStatefulWidget {
@@ -29,6 +30,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
   PlatformFile? selectedFile;
   Uint8List? selectedBytes;
   AiDocumentResultDto? result;
+  final List<AiTaskHistoryEntry> taskHistory = [];
   bool isProcessing = false;
 
   @override
@@ -105,6 +107,19 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
       setState(() {
         result = response;
+        taskHistory.insert(
+          0,
+          AiTaskHistoryEntry(
+            tool: selectedTool,
+            title: response.title,
+            score: response.score,
+            pexCost: response.pexCost,
+            createdAt: DateTime.now(),
+          ),
+        );
+        if (taskHistory.length > 10) {
+          taskHistory.removeRange(10, taskHistory.length);
+        }
         isProcessing = false;
       });
     } catch (error) {
@@ -188,6 +203,11 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
             const SizedBox(height: 20),
             if (isProcessing) const _ProcessingState(),
             if (result != null) _ResultPanel(result: result!),
+            const SizedBox(height: 20),
+            AiTaskHistoryCard(
+              entries: taskHistory,
+              onClear: () => setState(taskHistory.clear),
+            ),
           ],
         ),
       ),
