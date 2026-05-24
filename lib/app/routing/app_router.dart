@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../../features/ai_lab/ai_lab_view.dart';
+import '../../features/bills/bill_payments_view.dart';
 import '../../features/calls/routes/call_routes.dart';
 import '../../features/calls/views/active_call_view.dart';
 import '../../features/calls/views/buy_international_number_view.dart';
@@ -50,6 +51,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: CallRoutes.settings,
           builder: (context, state) => const CallSettingsView(),
+        ),
+        GoRoute(
+          path: '/bills',
+          builder: (context, state) => const BillPaymentsView(),
         ),
         GoRoute(
           path: '/market',
