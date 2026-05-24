@@ -82,7 +82,7 @@ class _BillsHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Pay data, airtime, electricity, TV, and internet bills. Use card, stablecoin, Nigerian VA, or Pera-X for discounts.',
+          'Pay data, airtime, electricity, TV, and internet bills in eligible countries. Use card, stablecoin, eligible-country VA, or Pera-X for discounts.',
           style: TextStyle(color: Colors.white60, fontSize: 14, height: 1.45),
         ),
         const SizedBox(height: 22),
@@ -108,7 +108,7 @@ class _BillsHeader extends StatelessWidget {
               const SizedBox(width: 14),
               const Expanded(
                 child: Text(
-                  'Nigeria bill rails will be powered by provider integration, while checkout remains Pera-X branded and payment-method flexible.',
+                  'Bill payment rails are enabled only for eligible countries, while checkout remains Pera-X branded and payment-method flexible.',
                   style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.4),
                 ),
               ),
