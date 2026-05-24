@@ -59,8 +59,11 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
     final file = selectedFile;
     final bytes = selectedBytes;
     final wallet = ref.read(walletProvider);
+    final notes = _notesController.text.trim();
+    final hasTextInput = notes.isNotEmpty;
+    final hasDocumentInput = file != null && bytes != null;
 
-    if (isProcessing || file == null || bytes == null) return;
+    if (isProcessing || (!hasDocumentInput && !hasTextInput)) return;
 
     if (wallet.pex < selectedTool.pexCost) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,14 +82,13 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
     try {
       final aiService = ref.read(aiServiceProvider);
-      final notes = _notesController.text.trim();
       final toolInstructions = selectedTool == AiDocumentTool.humanizer
           ? 'Humanizer tone: $selectedTone${notes.isEmpty ? '' : '\n$notes'}'
           : notes;
 
       final response = await aiService.analyzeDocument(
         tool: selectedTool,
-        fileName: file.name,
+        fileName: file?.name,
         fileBytes: bytes,
         pastedText: toolInstructions.trim().isEmpty ? null : toolInstructions.trim(),
       );
@@ -121,6 +123,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
   @override
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
+    final hasInput = selectedFile != null || _notesController.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -173,11 +176,12 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
               controller: _notesController,
               selectedTool: selectedTool,
               selectedTone: selectedTone,
+              onChanged: () => setState(() => result = null),
             ),
             const SizedBox(height: 16),
             _RunPanel(
               tool: selectedTool,
-              hasDocument: selectedFile != null,
+              hasInput: hasInput,
               isProcessing: isProcessing,
               onRun: _runTool,
             ),
@@ -468,7 +472,7 @@ class _DocumentUploadCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  selected?.name ?? 'Upload document',
+                  selected?.name ?? 'Upload document optional',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
@@ -479,7 +483,7 @@ class _DocumentUploadCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   selected == null
-                      ? 'PDF, DOC, DOCX, or TXT'
+                      ? 'Use PDF/DOC/TXT or paste text below'
                       : '${(selected.size / 1024).toStringAsFixed(1)} KB ready',
                   style: const TextStyle(
                     color: Colors.white54,
@@ -508,23 +512,26 @@ class _OptionalNotes extends StatelessWidget {
   final TextEditingController controller;
   final AiDocumentTool selectedTool;
   final String selectedTone;
+  final VoidCallback onChanged;
 
   const _OptionalNotes({
     required this.controller,
     required this.selectedTool,
     required this.selectedTone,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final hintText = selectedTool == AiDocumentTool.humanizer
-        ? 'Optional instructions for $selectedTone tone...'
-        : 'Optional instructions or pasted text...';
+        ? 'Paste text or add instructions for $selectedTone tone...'
+        : 'Paste text here or add optional instructions...';
 
     return TextField(
       controller: controller,
-      minLines: 3,
-      maxLines: 5,
+      minLines: 5,
+      maxLines: 8,
+      onChanged: (_) => onChanged(),
       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         hintText: hintText,
@@ -542,13 +549,13 @@ class _OptionalNotes extends StatelessWidget {
 
 class _RunPanel extends StatelessWidget {
   final AiDocumentTool tool;
-  final bool hasDocument;
+  final bool hasInput;
   final bool isProcessing;
   final VoidCallback onRun;
 
   const _RunPanel({
     required this.tool,
-    required this.hasDocument,
+    required this.hasInput,
     required this.isProcessing,
     required this.onRun,
   });
@@ -556,13 +563,13 @@ class _RunPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilledButton.icon(
-      onPressed: hasDocument && !isProcessing ? onRun : null,
+      onPressed: hasInput && !isProcessing ? onRun : null,
       icon: Icon(
         isProcessing ? Icons.hourglass_bottom : Icons.play_arrow_rounded,
       ),
       label: Text(
         isProcessing
-            ? 'PROCESSING DOCUMENT'
+            ? 'PROCESSING INPUT'
             : 'RUN ${tool.label.toUpperCase()} // ${tool.pexCost.toInt()} PEX',
       ),
       style: FilledButton.styleFrom(
