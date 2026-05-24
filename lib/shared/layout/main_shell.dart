@@ -39,9 +39,10 @@ class _MainShellState extends State<MainShell>
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/ai-lab')) return 1;
     if (location.startsWith('/pera-x/calls')) return 2;
-    if (location.startsWith('/market')) return 3;
+    if (location.startsWith('/bills')) return 3;
     if (location.startsWith('/wallet')) return 4;
-    if (location.startsWith('/checkout')) return 5;
+    if (location.startsWith('/market')) return 5;
+    if (location.startsWith('/checkout')) return 6;
     return 0;
   }
 
@@ -57,12 +58,15 @@ class _MainShellState extends State<MainShell>
         context.go('/pera-x/calls');
         break;
       case 3:
-        context.go('/market');
+        context.go('/bills');
         break;
       case 4:
         context.go('/wallet');
         break;
       case 5:
+        context.go('/market');
+        break;
+      case 6:
         context.go('/checkout');
         break;
     }
@@ -465,9 +469,9 @@ const _navItems = [
     outlinedIcon: Icons.call_outlined,
   ),
   _NavItem(
-    label: 'Market',
-    icon: Icons.shopping_bag_rounded,
-    outlinedIcon: Icons.shopping_bag_outlined,
+    label: 'Bills',
+    icon: Icons.receipt_long_rounded,
+    outlinedIcon: Icons.receipt_long_outlined,
   ),
   _NavItem(
     label: 'Wallet',
@@ -475,8 +479,13 @@ const _navItems = [
     outlinedIcon: Icons.account_balance_wallet_outlined,
   ),
   _NavItem(
+    label: 'Market',
+    icon: Icons.shopping_bag_rounded,
+    outlinedIcon: Icons.shopping_bag_outlined,
+  ),
+  _NavItem(
     label: 'Checkout',
-    icon: Icons.receipt_long_rounded,
-    outlinedIcon: Icons.receipt_long_outlined,
+    icon: Icons.payments_rounded,
+    outlinedIcon: Icons.payments_outlined,
   ),
 ];
