@@ -11,7 +11,7 @@ enum AiDocumentTool {
     apiValue: 'plagiarism_checker',
     pexCost: 8,
   ),
-  humanizer(label: 'Humanizer', apiValue: 'humanizer', pexCost: 10);
+  humanizer(label: 'Humanizer AI', apiValue: 'humanizer', pexCost: 10);
 
   final String label;
   final String apiValue;
