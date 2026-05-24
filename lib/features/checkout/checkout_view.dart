@@ -6,7 +6,9 @@ import '../../app/state/checkout_provider.dart';
 import '../../app/state/service_providers.dart';
 import '../../app/state/transaction_provider.dart';
 import '../../app/theme.dart';
+import '../../features/checkout/models/order_status.dart';
 import '../../features/checkout/models/payment_method.dart';
+import '../../features/checkout/widgets/order_status_timeline.dart';
 import '../../features/checkout/widgets/payment_instructions_card.dart';
 import '../../features/checkout/widgets/payment_method_selector.dart';
 import '../../features/market/models/product.dart';
@@ -190,6 +192,10 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                       PaymentInstructionsCard(
                         method: selectedPaymentMethod,
                         totalUsd: total,
+                      ),
+                      const SizedBox(height: 20),
+                      const OrderStatusTimeline(
+                        activeStep: OrderStatusStep.awaitingPayment,
                       ),
                       const SizedBox(height: 24),
                       _ConfirmButton(
@@ -441,88 +447,95 @@ class _SuccessView extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasBurn = burnedAmount > 0;
 
-    return Center(
-      child: Padding(
+    return SafeArea(
+      child: ListView(
         padding: const EdgeInsets.all(24),
-        child: GlassCard(
-          padding: const EdgeInsets.all(32),
-          radius: 36,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.5, end: 1),
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.elasticOut,
-                builder: (context, scale, child) =>
-                    Transform.scale(scale: scale, child: child),
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: const BoxDecoration(
-                    color: PeraXColors.cyan,
-                    shape: BoxShape.circle,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          GlassCard(
+            padding: const EdgeInsets.all(32),
+            radius: 36,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.5, end: 1),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.elasticOut,
+                  builder: (context, scale, child) =>
+                      Transform.scale(scale: scale, child: child),
+                  child: Container(
+                    width: 96,
+                    height: 96,
+                    decoration: const BoxDecoration(
+                      color: PeraXColors.cyan,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: PeraXColors.darkBlue,
+                      size: 58,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: PeraXColors.darkBlue,
-                    size: 58,
-                  ),
                 ),
-              ),
-              const SizedBox(height: 26),
-              const Text(
-                'Order Confirmed!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Paid via ${paymentMethod.title}',
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                hasBurn
-                    ? '${burnedAmount.toStringAsFixed(0)} PEX BURNED'
-                    : 'SERVICE CREDITS ISSUED',
-                style: TextStyle(
-                  color: hasBurn ? Colors.orange : PeraXColors.cyan,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Payment is recorded first. Delivery and policy actions are handled by the utility gateway.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextButton(
-                onPressed: () => context.go('/dashboard'),
-                child: const Text(
-                  'RETURN TO HUB',
+                const SizedBox(height: 26),
+                const Text(
+                  'Order Confirmed!',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: PeraXColors.cyan,
+                    fontSize: 28,
                     fontWeight: FontWeight.w900,
+                    color: Colors.white,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                Text(
+                  'Paid via ${paymentMethod.title}',
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  hasBurn
+                      ? '${burnedAmount.toStringAsFixed(0)} PEX BURNED'
+                      : 'SERVICE CREDITS ISSUED',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: hasBurn ? Colors.orange : PeraXColors.cyan,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Payment is recorded first. Delivery and policy actions are handled by the utility gateway.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 20),
+          const OrderStatusTimeline(activeStep: OrderStatusStep.delivered),
+          const SizedBox(height: 24),
+          TextButton(
+            onPressed: () => context.go('/dashboard'),
+            child: const Text(
+              'RETURN TO HUB',
+              style: TextStyle(
+                color: PeraXColors.cyan,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
