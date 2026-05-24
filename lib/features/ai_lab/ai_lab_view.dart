@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/state/service_providers.dart';
@@ -498,6 +499,8 @@ class _ResultPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reportText = _formatReport(result);
+
     return GlassCard(
       radius: 26,
       padding: const EdgeInsets.all(20),
@@ -571,7 +574,119 @@ class _ResultPanel extends StatelessWidget {
               style: const TextStyle(color: Colors.white, height: 1.45),
             ),
           ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _ResultActionButton(
+                icon: Icons.copy_rounded,
+                label: 'Copy Result',
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: result.output));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('AI output copied.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+              ),
+              _ResultActionButton(
+                icon: Icons.article_outlined,
+                label: 'Copy Report',
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: reportText));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Full AI report copied.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+              ),
+              _ResultActionButton(
+                icon: Icons.download_rounded,
+                label: 'Download Later',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Download export will be connected with backend storage.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  String _formatReport(AiDocumentResultDto result) {
+    final findingsText = result.findings
+        .map((finding) => '- $finding')
+        .join('\n');
+
+    return '''${result.title}
+
+Score: ${result.score.toStringAsFixed(0)}%
+PEX Cost: ${result.pexCost.toStringAsFixed(0)} PEX
+
+Summary:
+${result.summary}
+
+Findings:
+$findingsText
+
+Output:
+${result.output}
+''';
+  }
+}
+
+class _ResultActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ResultActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: PeraXColors.cyan.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: PeraXColors.cyan.withValues(alpha: 0.24)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: PeraXColors.cyan, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: PeraXColors.cyan,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
