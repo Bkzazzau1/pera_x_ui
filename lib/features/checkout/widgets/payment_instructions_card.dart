@@ -58,12 +58,12 @@ class PaymentInstructionsCard extends StatelessWidget {
         );
       case PaymentMethodType.virtualAccountNg:
         return const _InstructionLayout(
-          key: ValueKey('va_ng'),
+          key: ValueKey('va'),
           icon: Icons.account_balance_outlined,
           accent: Color(0xFF9DB7FF),
-          title: 'Nigeria Bank Transfer / VA',
-          subtitle: 'Generate a Nigerian virtual account with exact amount and expiry timer. Service activates after transfer confirmation.',
-          footer: 'Available for Nigeria only.',
+          title: 'Bank Transfer / VA',
+          subtitle: 'Generate an eligible-country virtual account with exact amount and expiry timer. Service activates after transfer confirmation.',
+          footer: 'Available in eligible countries only.',
         );
     }
   }
