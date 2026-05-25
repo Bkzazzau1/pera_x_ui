@@ -5,7 +5,6 @@ import '../../features/bills/bill_payments_view.dart';
 import '../../features/calls/routes/call_routes.dart';
 import '../../features/calls/views/active_call_view.dart';
 import '../../features/calls/views/buy_international_number_view.dart';
-import '../../features/calls/views/buy_pex_credit_view.dart';
 import '../../features/calls/views/call_history_view.dart';
 import '../../features/calls/views/call_receipt_view.dart';
 import '../../features/calls/views/call_settings_view.dart';
@@ -42,10 +41,6 @@ final appRouter = GoRouter(
           builder: (context, state) => const CallHistoryView(),
         ),
         GoRoute(
-          path: CallRoutes.buyCredit,
-          builder: (context, state) => const BuyCreditView(),
-        ),
-        GoRoute(
           path: CallRoutes.buyInternationalNumber,
           builder: (context, state) => const BuyInternationalNumberView(),
         ),
@@ -66,7 +61,7 @@ final appRouter = GoRouter(
           builder: (context, state) => const WalletView(),
         ),
         GoRoute(
-          path: '/credits',
+          path: CallRoutes.buyCredits,
           builder: (context, state) => const BuyCreditsView(),
         ),
         GoRoute(
