@@ -151,7 +151,7 @@ class _HistoryItem extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white45,
+                    color: Colors.white54,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),

@@ -141,7 +141,7 @@ class _AccessMetric extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white45,
+              color: Colors.white54,
               fontSize: 10,
               fontWeight: FontWeight.w800,
             ),
