@@ -4,19 +4,22 @@ import '../../../core/config/app_config.dart';
 class CheckoutResultDto {
   final String orderId;
   final String status;
-  final double burnedPex;
+  final double creditCost;
+  final double remainingCredits;
 
   const CheckoutResultDto({
     required this.orderId,
     required this.status,
-    required this.burnedPex,
+    required this.creditCost,
+    required this.remainingCredits,
   });
 
   factory CheckoutResultDto.fromJson(Map<String, dynamic> json) {
     return CheckoutResultDto(
       orderId: json['orderId']?.toString() ?? '',
       status: json['status']?.toString() ?? 'pending',
-      burnedPex: (json['burnedPex'] as num?)?.toDouble() ?? 0,
+      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 0,
+      remainingCredits: (json['remainingCredits'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -30,16 +33,17 @@ class CheckoutService {
   Future<CheckoutResultDto> confirmOrder({
     required String productId,
     required String productName,
-    required double totalUsd,
-    required bool payWithPex,
+    required double creditCost,
+    required double creditBalance,
   }) async {
     if (AppConfig.enableMockMode) {
       await Future<void>.delayed(const Duration(milliseconds: 600));
 
       return CheckoutResultDto(
         orderId: 'demo_order_${DateTime.now().millisecondsSinceEpoch}',
-        status: 'confirmed',
-        burnedPex: payWithPex ? 20 : 0,
+        status: creditBalance >= creditCost ? 'confirmed' : 'rejected',
+        creditCost: creditCost,
+        remainingCredits: creditBalance - creditCost,
       );
     }
 
@@ -48,8 +52,8 @@ class CheckoutService {
       body: {
         'productId': productId,
         'productName': productName,
-        'totalUsd': totalUsd,
-        'payWithPex': payWithPex,
+        'creditCost': creditCost,
+        'creditBalance': creditBalance,
       },
     );
 
