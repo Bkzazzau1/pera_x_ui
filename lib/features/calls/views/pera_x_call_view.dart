@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../wallet/state/wallet_provider.dart';
 import '../controllers/call_controller.dart';
 import '../models/call_destination_model.dart';
 import '../routes/call_routes.dart';
@@ -10,22 +12,26 @@ import '../widgets/call_mode_selector.dart';
 import '../widgets/call_number_display.dart';
 import '../widgets/recent_call_tile.dart';
 
-class PeraXCallView extends StatefulWidget {
+class PeraXCallView extends ConsumerStatefulWidget {
   const PeraXCallView({super.key});
 
   @override
-  State<PeraXCallView> createState() => _PeraXCallViewState();
+  ConsumerState<PeraXCallView> createState() => _PeraXCallViewState();
 }
 
-class _PeraXCallViewState extends State<PeraXCallView> {
+class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
   late final CallController controller;
+  bool isStartingCall = false;
 
   @override
   void initState() {
     super.initState();
     controller = CallController();
     controller.addListener(_refresh);
-    controller.init();
+    controller.init().then((_) {
+      if (!mounted) return;
+      controller.syncCreditBalance(ref.read(walletProvider).credits);
+    });
   }
 
   @override
@@ -114,8 +120,10 @@ class _PeraXCallViewState extends State<PeraXCallView> {
     );
   }
 
-  void _startCall() {
+  Future<void> _startCall() async {
     final number = controller.phoneNumber.trim();
+
+    if (isStartingCall) return;
 
     if (number.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,30 +135,86 @@ class _PeraXCallViewState extends State<PeraXCallView> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          controller.isInternational
-              ? 'Starting international call to $number'
-              : 'Starting local call to $number',
-        ),
-        backgroundColor: const Color(0xFF16A34A),
-      ),
-    );
+    controller.syncCreditBalance(ref.read(walletProvider).credits);
 
-    context.push(
-      CallRoutes.activeCall,
-      extra: ActiveCallArgs(
-        phoneNumber: number,
-        destination: controller.selectedDestination.country,
-        isInternational: controller.isInternational,
-        ratePerMinute: controller.selectedDestination.ratePerMinute,
-      ),
-    );
+    if (controller.creditBalance < controller.selectedDestination.ratePerMinute) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Insufficient Credits. Buy Credits before starting a call.'),
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
+      context.go('/credits');
+      return;
+    }
+
+    setState(() => isStartingCall = true);
+
+    try {
+      final accepted = await controller.startCall();
+
+      if (!mounted) return;
+
+      setState(() => isStartingCall = false);
+
+      if (!accepted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              controller.lastError ?? 'Call rejected. Please check your Credits.',
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
+
+      final activeCall = controller.activeCall;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            activeCall?.message.isNotEmpty == true
+                ? activeCall!.message
+                : controller.isInternational
+                    ? 'Starting international call to $number'
+                    : 'Starting local call to $number',
+          ),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+
+      context.push(
+        CallRoutes.activeCall,
+        extra: ActiveCallArgs(
+          phoneNumber: number,
+          destination: controller.selectedDestination.country,
+          isInternational: controller.isInternational,
+          ratePerMinute: controller.selectedDestination.ratePerMinute,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => isStartingCall = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final wallet = ref.watch(walletProvider);
+
+    if (!controller.isLoading && controller.creditBalance != wallet.credits) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) controller.syncCreditBalance(wallet.credits);
+      });
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF020617),
       body: Container(
@@ -494,16 +558,28 @@ class _PeraXCallViewState extends State<PeraXCallView> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: _startCall,
-            icon: const Icon(Icons.call_rounded),
+            onPressed: isStartingCall ? null : _startCall,
+            icon: isStartingCall
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.call_rounded),
             label: Text(
-              controller.isInternational
-                  ? 'Start Global Call'
-                  : 'Start Local Call',
+              isStartingCall
+                  ? 'Confirming Credits...'
+                  : controller.isInternational
+                      ? 'Start Global Call'
+                      : 'Start Local Call',
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF14B8A6),
               foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFF14B8A6).withValues(alpha: 0.45),
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 17),
               shape: RoundedRectangleBorder(
@@ -520,7 +596,7 @@ class _PeraXCallViewState extends State<PeraXCallView> {
         const SizedBox(width: 12),
 
         InkWell(
-          onTap: controller.deleteDigit,
+          onTap: isStartingCall ? null : controller.deleteDigit,
           borderRadius: BorderRadius.circular(18),
           child: Container(
             height: 56,
