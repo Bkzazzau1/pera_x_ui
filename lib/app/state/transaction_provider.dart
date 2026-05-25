@@ -5,7 +5,14 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../core/storage/local_storage.dart';
 
-enum TransactionType { aiPrompt, marketPurchase, burn, swap, topUp, checkout }
+enum TransactionType {
+  aiPrompt,
+  marketPurchase,
+  burn,
+  swap,
+  creditPurchase,
+  checkout,
+}
 
 class AppTransaction {
   final String id;
@@ -62,8 +69,9 @@ class AppTransaction {
         return TransactionType.burn;
       case 'swap':
         return TransactionType.swap;
+      case 'creditPurchase':
       case 'topUp':
-        return TransactionType.topUp;
+        return TransactionType.creditPurchase;
       case 'checkout':
         return TransactionType.checkout;
       default:
@@ -75,7 +83,7 @@ class AppTransaction {
   bool get isAiPrompt => type == TransactionType.aiPrompt;
   bool get isSwap => type == TransactionType.swap;
   bool get isPurchase => type == TransactionType.marketPurchase;
-  bool get isTopUp => type == TransactionType.topUp;
+  bool get isCreditPurchase => type == TransactionType.creditPurchase;
   bool get isCheckout => type == TransactionType.checkout;
 
   String get activityIcon {
@@ -88,8 +96,8 @@ class AppTransaction {
         return '🔥';
       case TransactionType.swap:
         return '🔁';
-      case TransactionType.topUp:
-        return '💳';
+      case TransactionType.creditPurchase:
+        return '🎟️';
       case TransactionType.checkout:
         return '✅';
     }
@@ -98,15 +106,15 @@ class AppTransaction {
   String get activityMessage {
     switch (type) {
       case TransactionType.aiPrompt:
-        return '$activityIcon ${amount.replaceFirst('-', '')} used for $subtitle AI request.';
+        return '$activityIcon ${amount.replaceFirst('-', '')} used for $subtitle.';
       case TransactionType.marketPurchase:
         return '$activityIcon $subtitle purchased successfully.';
       case TransactionType.burn:
         return '$activityIcon ${amount.replaceFirst('-', '')} burned from $subtitle.';
       case TransactionType.swap:
         return '$activityIcon $subtitle completed.';
-      case TransactionType.topUp:
-        return '$activityIcon Wallet topped up: $amount.';
+      case TransactionType.creditPurchase:
+        return '$activityIcon Credits purchased: $amount via $subtitle.';
       case TransactionType.checkout:
         return '$activityIcon Checkout completed: $subtitle.';
     }
@@ -123,38 +131,38 @@ class TransactionNotifier extends StateNotifier<List<AppTransaction>> {
       AppTransaction(
         id: 'tx_ai_001',
         type: TransactionType.aiPrompt,
-        title: 'AI Prompt',
+        title: 'AI Tool Usage',
         subtitle: 'AI Detector request',
-        amount: '-4 PEX',
+        amount: '-4 Credits',
         createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
         solscanHash: 'demo_ai_hash_001',
+      ),
+      AppTransaction(
+        id: 'tx_credit_001',
+        type: TransactionType.creditPurchase,
+        title: 'Buy Credits',
+        subtitle: 'Paid with PEX',
+        amount: '+100 Credits',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+        solscanHash: 'demo_credit_purchase_hash_001',
+      ),
+      AppTransaction(
+        id: 'tx_purchase_001',
+        type: TransactionType.marketPurchase,
+        title: 'Service Purchase',
+        subtitle: 'Call Credit Pack',
+        amount: '-20 Credits',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 35)),
+        solscanHash: 'demo_purchase_hash_001',
       ),
       AppTransaction(
         id: 'tx_burn_001',
         type: TransactionType.burn,
         title: 'Token Burn',
-        subtitle: 'AI Detector document request',
-        amount: '-4 PEX',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
-        solscanHash: 'demo_burn_ai_hash_001',
-      ),
-      AppTransaction(
-        id: 'tx_purchase_001',
-        type: TransactionType.marketPurchase,
-        title: 'Service Credit Conversion',
-        subtitle: 'Call Credit Pack',
-        amount: '-20 PEX',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
-        solscanHash: 'demo_purchase_hash_001',
-      ),
-      AppTransaction(
-        id: 'tx_burn_002',
-        type: TransactionType.burn,
-        title: 'Token Burn',
-        subtitle: 'Call Credit Pack activation',
-        amount: '-20 PEX',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
-        solscanHash: 'demo_burn_purchase_hash_001',
+        subtitle: 'Trading company policy action',
+        amount: '-500 PEX',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
+        solscanHash: 'demo_burn_policy_hash_001',
       ),
       AppTransaction(
         id: 'tx_swap_001',
@@ -249,11 +257,9 @@ class TransactionNotifier extends StateNotifier<List<AppTransaction>> {
       AppTransaction(
         id: _newId('tx_purchase'),
         type: TransactionType.marketPurchase,
-        title: 'Service Credit Conversion',
+        title: 'Service Purchase',
         subtitle: productName,
-        amount: paidWithPex
-            ? '-\$${amountUsd.toStringAsFixed(2)} with PEX'
-            : '-\$${amountUsd.toStringAsFixed(2)}',
+        amount: '-${amountUsd.toStringAsFixed(0)} Credits',
         createdAt: DateTime.now(),
         solscanHash: _newDemoHash('purchase'),
       ),
@@ -271,8 +277,8 @@ class TransactionNotifier extends StateNotifier<List<AppTransaction>> {
         type: TransactionType.checkout,
         title: 'Checkout',
         subtitle: paidWithPex
-            ? '$productName paid with PEX'
-            : '$productName paid with standard checkout',
+            ? '$productName paid with PEX to buy Credits'
+            : '$productName paid through standard checkout',
         amount: '-\$${amountUsd.toStringAsFixed(2)}',
         createdAt: DateTime.now(),
         solscanHash: _newDemoHash('checkout'),
@@ -296,16 +302,16 @@ class TransactionNotifier extends StateNotifier<List<AppTransaction>> {
     );
   }
 
-  void addAiPrompt({required String model, required double pexCost}) {
-    if (pexCost <= 0) return;
+  void addAiPrompt({required String model, required double creditCost}) {
+    if (creditCost <= 0) return;
 
     addTransaction(
       AppTransaction(
         id: _newId('tx_ai'),
         type: TransactionType.aiPrompt,
-        title: 'AI Prompt',
+        title: 'AI Tool Usage',
         subtitle: '$model request',
-        amount: '-${pexCost.toStringAsFixed(0)} PEX',
+        amount: '-${creditCost.toStringAsFixed(0)} Credits',
         createdAt: DateTime.now(),
         solscanHash: _newDemoHash('ai'),
       ),
@@ -316,18 +322,18 @@ class TransactionNotifier extends StateNotifier<List<AppTransaction>> {
     addBurn(reason: '$model AI request', pexAmount: pexAmount);
   }
 
-  void addTopUp({required String method, required double pexAmount}) {
-    if (pexAmount <= 0) return;
+  void addCreditPurchase({required String method, required double credits}) {
+    if (credits <= 0) return;
 
     addTransaction(
       AppTransaction(
-        id: _newId('tx_topup'),
-        type: TransactionType.topUp,
-        title: 'Wallet Top Up',
+        id: _newId('tx_credit_purchase'),
+        type: TransactionType.creditPurchase,
+        title: 'Buy Credits',
         subtitle: method,
-        amount: '+${pexAmount.toStringAsFixed(0)} PEX',
+        amount: '+${credits.toStringAsFixed(0)} Credits',
         createdAt: DateTime.now(),
-        solscanHash: _newDemoHash('topup'),
+        solscanHash: _newDemoHash('credit_purchase'),
       ),
     );
   }
@@ -424,7 +430,7 @@ final todayAiSpendProvider = Provider<double>((ref) {
     final numericAmount = transaction.amount
         .replaceAll('-', '')
         .replaceAll('+', '')
-        .replaceAll('PEX', '')
+        .replaceAll('Credits', '')
         .replaceAll(',', '')
         .trim();
 
