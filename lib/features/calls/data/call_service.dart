@@ -76,6 +76,43 @@ class EndCallResultDto {
   }
 }
 
+class ReserveNumberResultDto {
+  final String orderId;
+  final String phoneNumber;
+  final String country;
+  final String plan;
+  final String status;
+  final double creditCost;
+  final double remainingCredits;
+  final String message;
+
+  const ReserveNumberResultDto({
+    required this.orderId,
+    required this.phoneNumber,
+    required this.country,
+    required this.plan,
+    required this.status,
+    required this.creditCost,
+    required this.remainingCredits,
+    required this.message,
+  });
+
+  bool get reserved => status == 'reserved';
+
+  factory ReserveNumberResultDto.fromJson(Map<String, dynamic> json) {
+    return ReserveNumberResultDto(
+      orderId: json['orderId']?.toString() ?? '',
+      phoneNumber: json['phoneNumber']?.toString() ?? '',
+      country: json['country']?.toString() ?? '',
+      plan: json['plan']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'rejected',
+      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 0,
+      remainingCredits: (json['remainingCredits'] as num?)?.toDouble() ?? 0,
+      message: json['message']?.toString() ?? '',
+    );
+  }
+}
+
 class CallService {
   final ApiClient _apiClient;
 
@@ -130,15 +167,43 @@ class CallService {
     return true;
   }
 
-  Future<bool> purchaseInternationalNumber({
+  Future<ReserveNumberResultDto> purchaseInternationalNumber({
     required String country,
     required String number,
     required String plan,
     required double creditAmount,
+    required double creditBalance,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 650));
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 650));
+      final reserved = creditBalance >= creditAmount;
 
-    return true;
+      return ReserveNumberResultDto(
+        orderId: 'demo_num_order_${DateTime.now().millisecondsSinceEpoch}',
+        phoneNumber: number,
+        country: country,
+        plan: plan,
+        status: reserved ? 'reserved' : 'rejected',
+        creditCost: reserved ? creditAmount : 0,
+        remainingCredits: creditBalance - creditAmount,
+        message: reserved
+            ? 'Global number reservation accepted.'
+            : 'Global number reservation rejected. Insufficient Credits.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/telecom/numbers/reserve',
+      body: {
+        'country': country,
+        'phoneNumber': number,
+        'plan': plan,
+        'creditAmount': creditAmount,
+        'creditBalance': creditBalance,
+      },
+    );
+
+    return ReserveNumberResultDto.fromJson(response as Map<String, dynamic>);
   }
 
   Future<StartCallResultDto> startCallSession({
@@ -159,7 +224,9 @@ class CallService {
         destination: destination,
         ratePerMinute: ratePerMinute,
         creditBalance: creditBalance,
-        estimatedMinutes: ratePerMinute <= 0 ? 0 : (creditBalance / ratePerMinute).floor(),
+        estimatedMinutes: ratePerMinute <= 0
+            ? 0
+            : (creditBalance / ratePerMinute).floor(),
         reservedCredits: accepted ? ratePerMinute : 0,
         message: accepted
             ? 'Call session accepted. Credits will be charged by duration.'
