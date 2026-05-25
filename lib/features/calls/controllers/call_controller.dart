@@ -14,6 +14,8 @@ class CallController extends ChangeNotifier {
 
   double creditBalance = 0.00;
   String phoneNumber = '+234 ';
+  StartCallResultDto? activeCall;
+  String? lastError;
 
   late CallDestinationModel selectedDestination;
 
@@ -43,6 +45,11 @@ class CallController extends ChangeNotifier {
     phoneNumber = '${selectedDestination.code} ';
 
     isLoading = false;
+    notifyListeners();
+  }
+
+  void syncCreditBalance(double value) {
+    creditBalance = value;
     notifyListeners();
   }
 
@@ -82,11 +89,24 @@ class CallController extends ChangeNotifier {
   }
 
   Future<bool> startCall() async {
-    return service.startCallSession(
+    lastError = null;
+
+    final response = await service.startCallSession(
       phoneNumber: phoneNumber.trim(),
       destination: selectedDestination.country,
       isInternational: isInternational,
       ratePerMinute: selectedDestination.ratePerMinute,
+      creditBalance: creditBalance,
     );
+
+    if (!response.accepted) {
+      lastError = response.message;
+      notifyListeners();
+      return false;
+    }
+
+    activeCall = response;
+    notifyListeners();
+    return true;
   }
 }
