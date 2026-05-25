@@ -82,7 +82,7 @@ class _PeraXCallViewState extends State<PeraXCallView> {
                 const SizedBox(height: 6),
 
                 const Text(
-                  'Select where you want to call. Rates are shown in PEX per minute.',
+                  'Select where you want to call. Rates are shown in Credits per minute.',
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 13,
@@ -279,7 +279,7 @@ class _PeraXCallViewState extends State<PeraXCallView> {
             PopupMenuItem(
               value: 'buy_credit',
               child: Text(
-                'Buy PEX Credit',
+                'Buy Call Credits',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -380,7 +380,7 @@ class _PeraXCallViewState extends State<PeraXCallView> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${controller.pexBalance.toStringAsFixed(2)} PEX',
+            '${controller.creditBalance.toStringAsFixed(2)} Credits',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,

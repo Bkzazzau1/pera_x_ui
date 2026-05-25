@@ -83,10 +83,10 @@ class CallStaticData {
     },
   ];
 
-  static final List<Map<String, dynamic>> pexPackages = [
-    {'pex': 25, 'price': 5, 'label': 'Starter'},
-    {'pex': 75, 'price': 15, 'label': 'Everyday'},
-    {'pex': 150, 'price': 30, 'label': 'Business'},
+  static final List<Map<String, dynamic>> creditPackages = [
+    {'credits': 25, 'price': 5, 'label': 'Starter'},
+    {'credits': 75, 'price': 15, 'label': 'Everyday'},
+    {'credits': 150, 'price': 30, 'label': 'Business'},
   ];
 
   static const List<InternationalNumberModel> internationalNumbers = [
@@ -95,8 +95,8 @@ class CallStaticData {
       flag: '🇺🇸',
       code: '+1',
       sampleNumber: '+1 415 555 0198',
-      setupFeePex: 18,
-      monthlyFeePex: 42,
+      setupFeeCredit: 18,
+      monthlyFeeCredit: 42,
       capabilities: ['Voice', 'SMS', 'Caller ID'],
       popular: true,
     ),
@@ -105,8 +105,8 @@ class CallStaticData {
       flag: '🇬🇧',
       code: '+44',
       sampleNumber: '+44 20 7946 0821',
-      setupFeePex: 22,
-      monthlyFeePex: 48,
+      setupFeeCredit: 22,
+      monthlyFeeCredit: 48,
       capabilities: ['Voice', 'SMS', 'Business ID'],
     ),
     InternationalNumberModel(
@@ -114,8 +114,8 @@ class CallStaticData {
       flag: '🇨🇦',
       code: '+1',
       sampleNumber: '+1 647 555 0142',
-      setupFeePex: 18,
-      monthlyFeePex: 40,
+      setupFeeCredit: 18,
+      monthlyFeeCredit: 40,
       capabilities: ['Voice', 'SMS', 'Forwarding'],
     ),
     InternationalNumberModel(
@@ -123,14 +123,14 @@ class CallStaticData {
       flag: '🇬🇭',
       code: '+233',
       sampleNumber: '+233 30 555 0184',
-      setupFeePex: 14,
-      monthlyFeePex: 32,
+      setupFeeCredit: 14,
+      monthlyFeeCredit: 32,
       capabilities: ['Voice', 'Caller ID', 'Forwarding'],
     ),
   ];
 
   static const List<String> paymentMethods = [
-    'PEX Wallet',
+    'Pera-X Wallet',
     'USDC',
     'Bank Transfer',
   ];

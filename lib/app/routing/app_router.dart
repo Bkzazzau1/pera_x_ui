@@ -43,7 +43,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: CallRoutes.buyCredit,
-          builder: (context, state) => const BuyPexCreditView(),
+          builder: (context, state) => const BuyCreditView(),
         ),
         GoRoute(
           path: CallRoutes.buyInternationalNumber,

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../data/call_service.dart';
 
-class BuyPexCreditView extends StatefulWidget {
-  const BuyPexCreditView({super.key});
+class BuyCreditView extends StatefulWidget {
+  const BuyCreditView({super.key});
 
   @override
-  State<BuyPexCreditView> createState() => _BuyPexCreditViewState();
+  State<BuyCreditView> createState() => _BuyCreditViewState();
 }
 
-class _BuyPexCreditViewState extends State<BuyPexCreditView> {
+class _BuyCreditViewState extends State<BuyCreditView> {
   final CallService service = CallService();
   final TextEditingController amountController = TextEditingController();
 
@@ -18,7 +18,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
 
   int selectedPackageIndex = 0;
   String selectedPaymentMethod = '';
-  double pexBalance = 0.00;
+  double creditBalance = 0.00;
 
   List<Map<String, dynamic>> packages = [];
   List<String> paymentMethods = [];
@@ -41,20 +41,20 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
   }
 
   Future<void> loadTopUpData() async {
-    final loadedBalance = await service.getPexBalance();
-    final loadedPackages = await service.getPexPackages();
+    final loadedBalance = await service.getCreditBalance();
+    final loadedPackages = await service.getCreditPackages();
     final loadedPaymentMethods = await service.getPaymentMethods();
 
     if (!mounted) return;
 
     setState(() {
-      pexBalance = loadedBalance;
+      creditBalance = loadedBalance;
       packages = loadedPackages;
       paymentMethods = loadedPaymentMethods;
 
       if (packages.isNotEmpty) {
         selectedPackageIndex = packages.length > 1 ? 1 : 0;
-        amountController.text = packages[selectedPackageIndex]['pex']
+        amountController.text = packages[selectedPackageIndex]['credits']
             .toString();
       }
 
@@ -69,7 +69,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
   void selectPackage(int index) {
     setState(() {
       selectedPackageIndex = index;
-      amountController.text = packages[index]['pex'].toString();
+      amountController.text = packages[index]['credits'].toString();
     });
   }
 
@@ -80,7 +80,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a valid PEX amount.'),
+          content: Text('Please enter a valid Credit amount.'),
           backgroundColor: Color(0xFFDC2626),
         ),
       );
@@ -101,8 +101,8 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
       isSubmitting = true;
     });
 
-    final success = await service.createTopUpRequest(
-      pexAmount: amount,
+    final success = await service.createCreditPurchaseRequest(
+      creditAmount: amount,
       paymentMethod: selectedPaymentMethod,
     );
 
@@ -116,8 +116,8 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
       SnackBar(
         content: Text(
           success
-              ? 'Top-up request created for $amount PEX.'
-              : 'Top-up is not available yet.',
+              ? 'Credit purchase request created for $amount Credits.'
+              : 'Credit purchase is not available yet.',
         ),
         backgroundColor: success
             ? const Color(0xFF16A34A)
@@ -208,7 +208,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Buy PEX Credit',
+                'Buy Call Credits',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -281,7 +281,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
           ),
           const SizedBox(height: 14),
           Text(
-            '${pexBalance.toStringAsFixed(2)} PEX',
+            '${creditBalance.toStringAsFixed(2)} Credits',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 34,
@@ -297,7 +297,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
               borderRadius: BorderRadius.circular(30),
             ),
             child: const Text(
-              'Use PEX credits for local and international calls',
+              'Use Credits for local and international calls',
               style: TextStyle(
                 color: Color(0xFF5EEAD4),
                 fontSize: 12,
@@ -364,7 +364,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
                       Row(
                         children: [
                           Text(
-                            '${item['pex']} PEX',
+                            '${item['credits']} Credits',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -432,7 +432,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Custom PEX Amount',
+            'Custom Credit Amount',
             style: TextStyle(
               color: Colors.white,
               fontSize: 15,
@@ -450,7 +450,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
             decoration: InputDecoration(
               hintText: 'Enter amount',
               hintStyle: const TextStyle(color: Colors.white30),
-              suffixText: 'PEX',
+              suffixText: 'Credits',
               suffixStyle: const TextStyle(
                 color: Color(0xFF5EEAD4),
                 fontWeight: FontWeight.w900,
@@ -577,7 +577,7 @@ class _BuyPexCreditViewState extends State<BuyPexCreditView> {
                 ),
               )
             : const Icon(Icons.add_card_rounded),
-        label: Text(isSubmitting ? 'Processing...' : 'Confirm Top-Up'),
+        label: Text(isSubmitting ? 'Processing...' : 'Confirm Purchase'),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF14B8A6),
           disabledBackgroundColor: const Color(

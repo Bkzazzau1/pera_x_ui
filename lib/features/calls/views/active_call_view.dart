@@ -271,12 +271,12 @@ class _ActiveCallViewState extends State<ActiveCallView> {
         children: [
           _InfoItem(
             title: 'Rate',
-            value: '${widget.ratePerMinute.toStringAsFixed(2)} PEX/min',
+            value: '${widget.ratePerMinute.toStringAsFixed(2)} Credits/min',
           ),
           Container(width: 1, height: 36, color: Colors.white10),
           _InfoItem(
             title: 'Used',
-            value: '${estimatedCharge.toStringAsFixed(4)} PEX',
+            value: '${estimatedCharge.toStringAsFixed(4)} Credits',
           ),
           Container(width: 1, height: 36, color: Colors.white10),
           _InfoItem(title: 'Status', value: isOnHold ? 'On hold' : 'Connected'),

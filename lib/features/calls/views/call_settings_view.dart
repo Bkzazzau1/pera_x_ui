@@ -227,7 +227,7 @@ class _CallSettingsViewState extends State<CallSettingsView> {
 
           _SettingsSwitchTile(
             title: 'Low Credit Alert',
-            subtitle: 'Notify me when my PEX call credit is low',
+            subtitle: 'Notify me when my call Credits are low',
             icon: Icons.notifications_active_rounded,
             value: lowCreditAlert,
             onChanged: (value) {
@@ -292,7 +292,7 @@ class _CallSettingsViewState extends State<CallSettingsView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Preferred Top-Up Method',
+            'Preferred Purchase Method',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -303,7 +303,7 @@ class _CallSettingsViewState extends State<CallSettingsView> {
           const SizedBox(height: 4),
 
           const Text(
-            'This will be selected first when buying PEX credits.',
+            'This will be selected first when buying call Credits.',
             style: TextStyle(color: Color(0x73FFFFFF), fontSize: 12),
           ),
 

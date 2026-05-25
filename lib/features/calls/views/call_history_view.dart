@@ -133,7 +133,7 @@ class _CallHistoryViewState extends State<CallHistoryView> {
               ),
               SizedBox(height: 2),
               Text(
-                'Track calls, duration and PEX charges',
+                'Track calls, duration and Credit charges',
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
             ],
@@ -215,7 +215,7 @@ class _CallHistoryViewState extends State<CallHistoryView> {
             children: [
               _SummaryItem(
                 title: 'Spent',
-                value: '${totalSpent.toStringAsFixed(2)} PEX',
+                value: '${totalSpent.toStringAsFixed(2)} Credits',
               ),
               _VerticalDivider(),
               _SummaryItem(title: 'Calls', value: '$totalCalls'),
@@ -386,7 +386,7 @@ class _CallHistoryTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${charge.toStringAsFixed(2)} PEX',
+                    '${charge.toStringAsFixed(2)} Credits',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,

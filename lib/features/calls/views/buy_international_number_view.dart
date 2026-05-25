@@ -19,7 +19,7 @@ class _BuyInternationalNumberViewState
   bool isSubmitting = false;
   int selectedNumberIndex = 0;
   String selectedPlan = 'Monthly';
-  double pexBalance = 0;
+  double creditBalance = 0;
   List<InternationalNumberModel> numbers = [];
 
   InternationalNumberModel? get selectedNumber {
@@ -31,7 +31,7 @@ class _BuyInternationalNumberViewState
     final number = selectedNumber;
     if (number == null) return 0;
     final multiplier = selectedPlan == 'Annual' ? 10 : 1;
-    return number.setupFeePex + (number.monthlyFeePex * multiplier);
+    return number.setupFeeCredit + (number.monthlyFeeCredit * multiplier);
   }
 
   @override
@@ -41,13 +41,13 @@ class _BuyInternationalNumberViewState
   }
 
   Future<void> loadNumbers() async {
-    final loadedBalance = await service.getPexBalance();
+    final loadedBalance = await service.getCreditBalance();
     final loadedNumbers = await service.getInternationalNumbers();
 
     if (!mounted) return;
 
     setState(() {
-      pexBalance = loadedBalance;
+      creditBalance = loadedBalance;
       numbers = loadedNumbers;
       final popularIndex = numbers.indexWhere((number) => number.popular);
       selectedNumberIndex = popularIndex == -1 ? 0 : popularIndex;
@@ -59,10 +59,10 @@ class _BuyInternationalNumberViewState
     final number = selectedNumber;
     if (number == null) return;
 
-    if (pexBalance < totalDue) {
+    if (creditBalance < totalDue) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Insufficient PEX for this number package.'),
+          content: Text('Insufficient Credits for this number package.'),
           backgroundColor: Color(0xFFDC2626),
         ),
       );
@@ -75,7 +75,7 @@ class _BuyInternationalNumberViewState
       country: number.country,
       number: number.sampleNumber,
       plan: selectedPlan,
-      pexAmount: totalDue,
+      creditAmount: totalDue,
     );
 
     if (!mounted) return;
@@ -261,7 +261,7 @@ class _BuyInternationalNumberViewState
             children: const [
               _HeroPill(label: 'Voice enabled'),
               _HeroPill(label: 'SMS ready'),
-              _HeroPill(label: 'PEX billing'),
+              _HeroPill(label: 'Credit billing'),
             ],
           ),
         ],
@@ -360,7 +360,7 @@ class _BuyInternationalNumberViewState
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${number.sampleNumber} • ${number.monthlyFeePex.toStringAsFixed(0)} PEX/mo',
+                        '${number.sampleNumber} • ${number.monthlyFeeCredit.toStringAsFixed(0)} Credits/mo',
                         style: const TextStyle(
                           color: Color(0x80FFFFFF),
                           fontSize: 12,
@@ -452,16 +452,17 @@ class _BuyInternationalNumberViewState
           _SummaryRow(label: 'Number', value: number.sampleNumber),
           _SummaryRow(
             label: 'Setup',
-            value: '${number.setupFeePex.toStringAsFixed(0)} PEX',
+            value: '${number.setupFeeCredit.toStringAsFixed(0)} Credits',
           ),
           _SummaryRow(
             label: selectedPlan == 'Annual' ? 'Annual service' : 'Monthly',
-            value: '${(totalDue - number.setupFeePex).toStringAsFixed(0)} PEX',
+            value:
+                '${(totalDue - number.setupFeeCredit).toStringAsFixed(0)} Credits',
           ),
           const Divider(color: Colors.white10, height: 22),
           _SummaryRow(
             label: 'Total due today',
-            value: '${totalDue.toStringAsFixed(0)} PEX',
+            value: '${totalDue.toStringAsFixed(0)} Credits',
             strong: true,
           ),
           const SizedBox(height: 12),

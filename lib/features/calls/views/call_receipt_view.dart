@@ -192,7 +192,7 @@ class CallReceiptView extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '${charge.toStringAsFixed(4)} PEX',
+            '${charge.toStringAsFixed(4)} Credits',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 35,
@@ -243,7 +243,7 @@ class CallReceiptView extends StatelessWidget {
           _DividerLine(),
           _ReceiptRow(title: 'Duration', value: duration),
           _DividerLine(),
-          _ReceiptRow(title: 'Payment Method', value: 'PEX Call Credit'),
+          _ReceiptRow(title: 'Payment Method', value: 'Call Credits'),
           _DividerLine(),
           _ReceiptRow(title: 'Reference', value: _referenceCode),
         ],

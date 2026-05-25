@@ -23,7 +23,7 @@ class CallRoutes {
   static Map<String, WidgetBuilder> routes = {
     callHome: (_) => const PeraXCallView(),
     callHistory: (_) => const CallHistoryView(),
-    buyCredit: (_) => const BuyPexCreditView(),
+    buyCredit: (_) => const BuyCreditView(),
     buyInternationalNumber: (_) => const BuyInternationalNumberView(),
     settings: (_) => const CallSettingsView(),
   };

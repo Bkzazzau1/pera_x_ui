@@ -31,7 +31,7 @@ class CallService {
 
   Future<List<Map<String, dynamic>>> getCreditPackages() async {
     await Future.delayed(const Duration(milliseconds: 250));
-    return CallStaticData.pexPackages;
+    return CallStaticData.creditPackages;
   }
 
   Future<List<String>> getPaymentMethods() async {

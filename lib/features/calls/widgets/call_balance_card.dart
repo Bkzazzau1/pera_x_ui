@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 class CallBalanceCard extends StatelessWidget {
-  final double pexBalance;
+  final double creditBalance;
   final int estimatedMinutes;
   final String destinationName;
 
   const CallBalanceCard({
     super.key,
-    required this.pexBalance,
+    required this.creditBalance,
     required this.estimatedMinutes,
     required this.destinationName,
   });
@@ -59,7 +59,7 @@ class CallBalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            '${pexBalance.toStringAsFixed(2)} PEX',
+            '${creditBalance.toStringAsFixed(2)} Credits',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 31,
