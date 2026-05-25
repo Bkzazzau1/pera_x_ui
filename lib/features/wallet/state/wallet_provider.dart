@@ -8,6 +8,7 @@ class WalletState {
   final double sol;
   final double usdc;
   final double pex;
+  final double credits;
   final double pexUsdValue;
   final double burnedPex;
   final double pexUsdRate;
@@ -16,6 +17,7 @@ class WalletState {
     required this.sol,
     required this.usdc,
     required this.pex,
+    required this.credits,
     required this.pexUsdValue,
     required this.burnedPex,
     required this.pexUsdRate,
@@ -26,6 +28,7 @@ class WalletState {
       sol: 12.45,
       usdc: 850.00,
       pex: 24850,
+      credits: 250,
       pexUsdValue: 2485.00,
       burnedPex: 120430,
       pexUsdRate: 0.10,
@@ -40,6 +43,7 @@ class WalletState {
       sol: (json['sol'] as num?)?.toDouble() ?? 12.45,
       usdc: (json['usdc'] as num?)?.toDouble() ?? 850.00,
       pex: pex,
+      credits: (json['credits'] as num?)?.toDouble() ?? 250,
       pexUsdValue:
           (json['pexUsdValue'] as num?)?.toDouble() ?? pex * pexUsdRate,
       burnedPex: (json['burnedPex'] as num?)?.toDouble() ?? 120430,
@@ -52,6 +56,7 @@ class WalletState {
       'sol': sol,
       'usdc': usdc,
       'PEX': pex,
+      'credits': credits,
       'pexUsdValue': pexUsdValue,
       'burnedPex': burnedPex,
       'pexUsdRate': pexUsdRate,
@@ -62,6 +67,7 @@ class WalletState {
     double? sol,
     double? usdc,
     double? pex,
+    double? credits,
     double? pexUsdValue,
     double? burnedPex,
     double? pexUsdRate,
@@ -70,6 +76,7 @@ class WalletState {
       sol: sol ?? this.sol,
       usdc: usdc ?? this.usdc,
       pex: pex ?? this.pex,
+      credits: credits ?? this.credits,
       pexUsdValue: pexUsdValue ?? this.pexUsdValue,
       burnedPex: burnedPex ?? this.burnedPex,
       pexUsdRate: pexUsdRate ?? this.pexUsdRate,
@@ -115,6 +122,39 @@ class WalletNotifier extends StateNotifier<WalletState> {
   /// 1 SOL = 2,000 PEX.
   /// Later this will come from Meteora / backend quote API.
   double get solToPexRate => 2000;
+
+  /// Internal platform credits are separate from PEX.
+  /// Users can buy credits with PEX, fiat, stablecoin, card, or eligible-country VA.
+  double get pexToCreditRate => 1;
+
+  void spendCredits(double amount) {
+    if (amount <= 0) return;
+
+    final safeAmount = amount > state.credits ? state.credits : amount;
+    _update(state.copyWith(credits: state.credits - safeAmount));
+  }
+
+  void addCredits(double amount) {
+    if (amount <= 0) return;
+
+    _update(state.copyWith(credits: state.credits + amount));
+  }
+
+  void buyCreditsWithPex(double pexAmount) {
+    if (pexAmount <= 0) return;
+    if (state.pex < pexAmount) return;
+
+    final creditsAmount = pexAmount * pexToCreditRate;
+    final newPex = state.pex - pexAmount;
+
+    _update(
+      state.copyWith(
+        pex: newPex,
+        credits: state.credits + creditsAmount,
+        pexUsdValue: newPex * state.pexUsdRate,
+      ),
+    );
+  }
 
   void burnPex(double amount) {
     if (amount <= 0) return;
