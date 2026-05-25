@@ -1,11 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../wallet/state/wallet_provider.dart';
+import '../data/call_service.dart';
 import '../routes/call_routes.dart';
 
-class ActiveCallView extends StatefulWidget {
+class ActiveCallView extends ConsumerStatefulWidget {
+  final String callId;
   final String phoneNumber;
   final String destination;
   final bool isInternational;
@@ -13,6 +17,7 @@ class ActiveCallView extends StatefulWidget {
 
   const ActiveCallView({
     super.key,
+    required this.callId,
     required this.phoneNumber,
     required this.destination,
     required this.isInternational,
@@ -20,10 +25,11 @@ class ActiveCallView extends StatefulWidget {
   });
 
   @override
-  State<ActiveCallView> createState() => _ActiveCallViewState();
+  ConsumerState<ActiveCallView> createState() => _ActiveCallViewState();
 }
 
-class _ActiveCallViewState extends State<ActiveCallView> {
+class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
+  final CallService service = CallService();
   Timer? timer;
   int seconds = 0;
 
@@ -31,6 +37,7 @@ class _ActiveCallViewState extends State<ActiveCallView> {
   bool isSpeakerOn = false;
   bool isOnHold = false;
   bool showKeypad = false;
+  bool isEndingCall = false;
 
   @override
   void initState() {
@@ -66,19 +73,70 @@ class _ActiveCallViewState extends State<ActiveCallView> {
     return minutesUsed * widget.ratePerMinute;
   }
 
-  void endCall() {
-    timer?.cancel();
+  Future<void> endCall() async {
+    if (isEndingCall) return;
 
-    context.go(
-      CallRoutes.callReceipt,
-      extra: CallReceiptArgs(
+    timer?.cancel();
+    setState(() => isEndingCall = true);
+
+    final wallet = ref.read(walletProvider);
+
+    try {
+      final response = await service.endCallSession(
+        callId: widget.callId,
         phoneNumber: widget.phoneNumber,
-        destination: widget.destination,
-        duration: formattedDuration,
-        charge: estimatedCharge,
-        isInternational: widget.isInternational,
-      ),
-    );
+        durationSeconds: seconds,
+        ratePerMinute: widget.ratePerMinute,
+        creditBalance: wallet.credits,
+      );
+
+      if (!mounted) return;
+
+      if (!response.completed) {
+        setState(() => isEndingCall = false);
+        startTimer();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message.isEmpty
+                  ? 'Call could not be completed. Please check your Credits.'
+                  : response.message,
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
+
+      ref.read(walletProvider.notifier).spendCredits(response.creditCost);
+
+      context.go(
+        CallRoutes.callReceipt,
+        extra: CallReceiptArgs(
+          phoneNumber: widget.phoneNumber,
+          destination: widget.destination,
+          duration: formattedDuration,
+          charge: response.creditCost,
+          isInternational: widget.isInternational,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      final fallbackCharge = estimatedCharge;
+      ref.read(walletProvider.notifier).spendCredits(fallbackCharge);
+
+      context.go(
+        CallRoutes.callReceipt,
+        extra: CallReceiptArgs(
+          phoneNumber: widget.phoneNumber,
+          destination: widget.destination,
+          duration: formattedDuration,
+          charge: fallbackCharge,
+          isInternational: widget.isInternational,
+        ),
+      );
+    }
   }
 
   @override
@@ -178,9 +236,9 @@ class _ActiveCallViewState extends State<ActiveCallView> {
             color: const Color(0xFF14B8A6).withValues(alpha: 0.13),
             borderRadius: BorderRadius.circular(30),
           ),
-          child: const Text(
-            'LIVE',
-            style: TextStyle(
+          child: Text(
+            isEndingCall ? 'ENDING' : 'LIVE',
+            style: const TextStyle(
               color: Color(0xFF5EEAD4),
               fontSize: 11,
               fontWeight: FontWeight.w900,
@@ -279,7 +337,10 @@ class _ActiveCallViewState extends State<ActiveCallView> {
             value: '${estimatedCharge.toStringAsFixed(4)} Credits',
           ),
           Container(width: 1, height: 36, color: Colors.white10),
-          _InfoItem(title: 'Status', value: isOnHold ? 'On hold' : 'Connected'),
+          _InfoItem(
+            title: 'Status',
+            value: isEndingCall ? 'Ending' : isOnHold ? 'On hold' : 'Connected',
+          ),
         ],
       ),
     );
@@ -413,27 +474,36 @@ class _ActiveCallViewState extends State<ActiveCallView> {
 
   Widget _buildEndCallButton() {
     return InkWell(
-      onTap: endCall,
+      onTap: isEndingCall ? null : endCall,
       borderRadius: BorderRadius.circular(40),
       child: Container(
         height: 74,
         width: 74,
         decoration: BoxDecoration(
-          color: const Color(0xFFDC2626),
+          color: isEndingCall ? Colors.white24 : const Color(0xFFDC2626),
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFDC2626).withValues(alpha: 0.35),
-              blurRadius: 30,
-              offset: const Offset(0, 14),
-            ),
+            if (!isEndingCall)
+              BoxShadow(
+                color: const Color(0xFFDC2626).withValues(alpha: 0.35),
+                blurRadius: 30,
+                offset: const Offset(0, 14),
+              ),
           ],
         ),
-        child: const Icon(
-          Icons.call_end_rounded,
-          color: Colors.white,
-          size: 34,
-        ),
+        child: isEndingCall
+            ? const Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(
+                Icons.call_end_rounded,
+                color: Colors.white,
+                size: 34,
+              ),
       ),
     );
   }
