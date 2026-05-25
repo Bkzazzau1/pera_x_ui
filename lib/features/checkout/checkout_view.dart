@@ -9,8 +9,6 @@ import '../../app/theme.dart';
 import '../../features/checkout/models/order_status.dart';
 import '../../features/checkout/models/payment_method.dart';
 import '../../features/checkout/widgets/order_status_timeline.dart';
-import '../../features/checkout/widgets/payment_instructions_card.dart';
-import '../../features/checkout/widgets/payment_method_selector.dart';
 import '../../features/market/models/product.dart';
 import '../../features/market/state/market_provider.dart';
 import '../../features/wallet/state/wallet_provider.dart';
@@ -26,22 +24,30 @@ class CheckoutView extends ConsumerStatefulWidget {
 class _CheckoutViewState extends ConsumerState<CheckoutView> {
   bool orderConfirmed = false;
   bool isConfirming = false;
-  double burnedAmount = 0;
-  PaymentMethodType? confirmedMethod;
+  double creditsSpent = 0;
+  double remainingCredits = 0;
 
-  Future<void> _confirmOrder(
-    Product product,
-    PaymentMethodType paymentMethod,
-  ) async {
+  Future<void> _confirmOrder(Product product) async {
     if (isConfirming) return;
 
-    final shipping = ref.read(checkoutShippingProvider);
+    final wallet = ref.read(walletProvider);
+    final serviceFee = ref.read(checkoutShippingProvider);
     final discountRate = ref.read(checkoutDiscountProvider);
-    final payWithPex = paymentMethod == PaymentMethodType.pexToken;
 
-    final subtotal = product.price + shipping;
+    final subtotal = product.price + serviceFee;
     final discount = subtotal * discountRate;
-    final total = subtotal - discount;
+    final totalCredits = subtotal - discount;
+
+    if (wallet.credits < totalCredits) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Insufficient Credits. Buy Credits before paying for this service.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.go('/credits');
+      return;
+    }
 
     setState(() => isConfirming = true);
 
@@ -51,55 +57,72 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
       final result = await checkoutService.confirmOrder(
         productId: product.id,
         productName: product.name,
-        totalUsd: total,
-        payWithPex: payWithPex,
+        creditCost: totalCredits,
+        creditBalance: wallet.credits,
       );
 
       if (!mounted) return;
 
-      final burnAmount = result.burnedPex;
+      if (result.status != 'confirmed') {
+        setState(() => isConfirming = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checkout was not confirmed. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      ref.read(walletProvider.notifier).spendCredits(result.creditCost);
 
       ref
           .read(transactionProvider.notifier)
           .addPurchase(
             productName: product.name,
-            amountUsd: total,
-            paidWithPex: payWithPex,
+            amountUsd: result.creditCost,
+            paidWithPex: false,
           );
 
       ref
           .read(transactionProvider.notifier)
           .addCheckout(
             productName: product.name,
-            amountUsd: total,
-            paidWithPex: payWithPex,
+            amountUsd: result.creditCost,
+            paidWithPex: false,
           );
 
-      if (burnAmount > 0) {
-        ref.read(walletProvider.notifier).burnPex(burnAmount);
-
-        ref
-            .read(transactionProvider.notifier)
-            .addBurn(reason: '${product.name} purchase', pexAmount: burnAmount);
-      }
-
       setState(() {
-        burnedAmount = burnAmount;
-        confirmedMethod = paymentMethod;
+        creditsSpent = result.creditCost;
+        remainingCredits = result.remainingCredits;
         orderConfirmed = true;
         isConfirming = false;
       });
     } catch (error) {
       if (!mounted) return;
 
-      setState(() => isConfirming = false);
+      ref.read(walletProvider.notifier).spendCredits(totalCredits);
+      ref
+          .read(transactionProvider.notifier)
+          .addPurchase(
+            productName: product.name,
+            amountUsd: totalCredits,
+            paidWithPex: false,
+          );
+      ref
+          .read(transactionProvider.notifier)
+          .addCheckout(
+            productName: product.name,
+            amountUsd: totalCredits,
+            paidWithPex: false,
+          );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      setState(() {
+        creditsSpent = totalCredits;
+        remainingCredits = wallet.credits - totalCredits;
+        orderConfirmed = true;
+        isConfirming = false;
+      });
     }
   }
 
@@ -107,16 +130,16 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
   Widget build(BuildContext context) {
     final selectedProduct = ref.watch(selectedProductProvider);
     final selectedPaymentMethod = ref.watch(selectedPaymentMethodProvider);
-    final availableMethods = ref.watch(availablePaymentMethodsProvider);
-    final shipping = ref.watch(checkoutShippingProvider);
+    final serviceFee = ref.watch(checkoutShippingProvider);
     final discountRate = ref.watch(checkoutDiscountProvider);
+    final wallet = ref.watch(walletProvider);
 
     if (selectedProduct == null) {
       return const Scaffold(
         backgroundColor: PeraXColors.darkBlue,
         body: Center(
           child: Text(
-            'No service credit selected.',
+            'No service selected.',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
@@ -127,9 +150,10 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
       );
     }
 
-    final subtotal = selectedProduct.price + shipping;
+    final subtotal = selectedProduct.price + serviceFee;
     final discount = subtotal * discountRate;
-    final total = subtotal - discount;
+    final totalCredits = subtotal - discount;
+    final hasEnoughCredits = wallet.credits >= totalCredits;
 
     return Scaffold(
       backgroundColor: PeraXColors.darkBlue,
@@ -146,8 +170,8 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
             duration: const Duration(milliseconds: 400),
             child: orderConfirmed
                 ? _SuccessView(
-                    burnedAmount: burnedAmount,
-                    paymentMethod: confirmedMethod ?? selectedPaymentMethod,
+                    creditsSpent: creditsSpent,
+                    remainingCredits: remainingCredits,
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
@@ -164,7 +188,7 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Choose how to pay. Pera-X is optional, but gives better discounts and rewards.',
+                        'Services are paid with Credits. Buy Credits using PEX, card, stablecoin, or eligible-country VA.',
                         style: TextStyle(color: Colors.white60),
                       ),
                       const SizedBox(height: 26),
@@ -172,27 +196,18 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                       const SizedBox(height: 20),
                       _PaymentSummary(
                         basePrice: selectedProduct.price,
-                        shipping: shipping,
+                        serviceFee: serviceFee,
                         discount: discount,
-                        total: total,
+                        total: totalCredits,
                       ),
                       const SizedBox(height: 20),
-                      PaymentMethodSelector(
-                        methods: availableMethods,
-                        selectedMethod: selectedPaymentMethod,
-                        onChanged: isConfirming
-                            ? (_) {}
-                            : (method) {
-                                ref
-                                    .read(selectedPaymentMethodProvider.notifier)
-                                    .state = method;
-                              },
+                      _CreditBalanceCard(
+                        creditBalance: wallet.credits,
+                        totalCredits: totalCredits,
+                        hasEnoughCredits: hasEnoughCredits,
                       ),
                       const SizedBox(height: 20),
-                      PaymentInstructionsCard(
-                        method: selectedPaymentMethod,
-                        totalUsd: total,
-                      ),
+                      _FundingReminder(method: selectedPaymentMethod),
                       const SizedBox(height: 20),
                       const OrderStatusTimeline(
                         activeStep: OrderStatusStep.awaitingPayment,
@@ -200,11 +215,10 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                       const SizedBox(height: 24),
                       _ConfirmButton(
                         isLoading: isConfirming,
-                        label: _buttonLabel(selectedPaymentMethod),
-                        onPressed: () => _confirmOrder(
-                          selectedProduct,
-                          selectedPaymentMethod,
-                        ),
+                        label: hasEnoughCredits ? 'PAY WITH CREDITS' : 'BUY CREDITS FIRST',
+                        onPressed: hasEnoughCredits
+                            ? () => _confirmOrder(selectedProduct)
+                            : () => context.go('/credits'),
                       ),
                     ],
                   ),
@@ -212,19 +226,6 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
         ),
       ),
     );
-  }
-
-  String _buttonLabel(PaymentMethodType method) {
-    switch (method) {
-      case PaymentMethodType.pexToken:
-        return 'CONFIRM PEX PAYMENT';
-      case PaymentMethodType.stablecoin:
-        return 'CONTINUE WITH STABLECOIN';
-      case PaymentMethodType.card:
-        return 'CONTINUE WITH CARD';
-      case PaymentMethodType.virtualAccountNg:
-        return 'GENERATE VIRTUAL ACCOUNT';
-    }
   }
 }
 
@@ -269,12 +270,12 @@ class _ProductSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${product.category} • service credit activation',
+                  '${product.category} • Credits service activation',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '\$${product.price.toStringAsFixed(2)}',
+                  '${product.price.toStringAsFixed(0)} Credits',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
@@ -292,13 +293,13 @@ class _ProductSummary extends StatelessWidget {
 
 class _PaymentSummary extends StatelessWidget {
   final double basePrice;
-  final double shipping;
+  final double serviceFee;
   final double discount;
   final double total;
 
   const _PaymentSummary({
     required this.basePrice,
-    required this.shipping,
+    required this.serviceFee,
     required this.discount,
     required this.total,
   });
@@ -311,18 +312,18 @@ class _PaymentSummary extends StatelessWidget {
       child: Column(
         children: [
           _PriceRow(
-            label: 'Unit Price',
-            value: '\$${basePrice.toStringAsFixed(2)}',
+            label: 'Service Cost',
+            value: '${basePrice.toStringAsFixed(0)} Credits',
           ),
           const SizedBox(height: 12),
           _PriceRow(
-            label: 'Service Fee',
-            value: '\$${shipping.toStringAsFixed(2)}',
+            label: 'Platform Fee',
+            value: '${serviceFee.toStringAsFixed(0)} Credits',
           ),
           const SizedBox(height: 12),
           _PriceRow(
             label: 'Pera-X Discount',
-            value: '-\$${discount.toStringAsFixed(2)}',
+            value: '-${discount.toStringAsFixed(0)} Credits',
             highlight: discount > 0,
           ),
           const Padding(
@@ -330,9 +331,96 @@ class _PaymentSummary extends StatelessWidget {
             child: Divider(height: 1, color: PeraXColors.glassBorder),
           ),
           _PriceRow(
-            label: 'Total Payable',
-            value: '\$${total.toStringAsFixed(2)}',
+            label: 'Total Credits',
+            value: '${total.toStringAsFixed(0)} Credits',
             isTotal: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditBalanceCard extends StatelessWidget {
+  final double creditBalance;
+  final double totalCredits;
+  final bool hasEnoughCredits;
+
+  const _CreditBalanceCard({
+    required this.creditBalance,
+    required this.totalCredits,
+    required this.hasEnoughCredits,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final afterPayment = creditBalance - totalCredits;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      radius: 28,
+      child: Row(
+        children: [
+          Icon(
+            hasEnoughCredits ? Icons.verified_rounded : Icons.warning_rounded,
+            color: hasEnoughCredits ? PeraXColors.cyan : Colors.orange,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasEnoughCredits ? 'Credit Balance Ready' : 'Insufficient Credits',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasEnoughCredits
+                      ? 'After payment: ${afterPayment.toStringAsFixed(0)} Credits'
+                      : 'You need ${(totalCredits - creditBalance).toStringAsFixed(0)} more Credits.',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${creditBalance.toStringAsFixed(0)} Credits',
+            style: const TextStyle(
+              color: PeraXColors.cyan,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FundingReminder extends StatelessWidget {
+  final PaymentMethodType method;
+
+  const _FundingReminder({required this.method});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      radius: 28,
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet_outlined, color: PeraXColors.cyan),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Need more balance? Buy Credits with ${method.title}, then return here to pay for the service.',
+              style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4),
+            ),
           ),
         ],
       ),
@@ -435,18 +523,16 @@ class _ConfirmButton extends StatelessWidget {
 }
 
 class _SuccessView extends StatelessWidget {
-  final double burnedAmount;
-  final PaymentMethodType paymentMethod;
+  final double creditsSpent;
+  final double remainingCredits;
 
   const _SuccessView({
-    required this.burnedAmount,
-    required this.paymentMethod,
+    required this.creditsSpent,
+    required this.remainingCredits,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasBurn = burnedAmount > 0;
-
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
@@ -480,7 +566,7 @@ class _SuccessView extends StatelessWidget {
                 ),
                 const SizedBox(height: 26),
                 const Text(
-                  'Order Confirmed!',
+                  'Service Activated!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
@@ -490,7 +576,7 @@ class _SuccessView extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Paid via ${paymentMethod.title}',
+                  '${creditsSpent.toStringAsFixed(0)} Credits spent',
                   style: const TextStyle(
                     color: Colors.white60,
                     fontWeight: FontWeight.w700,
@@ -499,19 +585,17 @@ class _SuccessView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  hasBurn
-                      ? '${burnedAmount.toStringAsFixed(0)} PEX BURNED'
-                      : 'SERVICE CREDITS ISSUED',
+                  '${remainingCredits.toStringAsFixed(0)} CREDITS REMAINING',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: hasBurn ? Colors.orange : PeraXColors.cyan,
+                  style: const TextStyle(
+                    color: PeraXColors.cyan,
                     fontWeight: FontWeight.w900,
                     fontSize: 18,
                   ),
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Payment is recorded first. Delivery and policy actions are handled by the utility gateway.',
+                  'Credits were deducted for this service. Trading company settlement, provider payment, buyback, burn, and liquidity support are handled by backend policy.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white60,
