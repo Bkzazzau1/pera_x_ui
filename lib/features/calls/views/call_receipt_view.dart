@@ -62,7 +62,7 @@ class CallReceiptView extends StatelessWidget {
                 const SizedBox(height: 8),
 
                 const Text(
-                  'Your call has ended successfully.',
+                  'Your call has ended successfully and Credits were charged by duration.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white54,
@@ -183,7 +183,7 @@ class CallReceiptView extends StatelessWidget {
       child: Column(
         children: [
           const Text(
-            'Total Charged',
+            'Credits Charged',
             style: TextStyle(
               color: Colors.white60,
               fontSize: 13,
@@ -208,7 +208,7 @@ class CallReceiptView extends StatelessWidget {
               borderRadius: BorderRadius.circular(30),
             ),
             child: const Text(
-              'Successful',
+              'Charged from Credit Balance',
               style: TextStyle(
                 color: Color(0xFF5EEAD4),
                 fontWeight: FontWeight.w900,
@@ -243,7 +243,9 @@ class CallReceiptView extends StatelessWidget {
           _DividerLine(),
           _ReceiptRow(title: 'Duration', value: duration),
           _DividerLine(),
-          _ReceiptRow(title: 'Payment Method', value: 'Call Credits'),
+          _ReceiptRow(title: 'Payment Balance', value: 'Credits'),
+          _DividerLine(),
+          _ReceiptRow(title: 'Charge', value: '${charge.toStringAsFixed(4)} Credits'),
           _DividerLine(),
           _ReceiptRow(title: 'Reference', value: _referenceCode),
         ],
