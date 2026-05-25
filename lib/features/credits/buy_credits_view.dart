@@ -5,6 +5,7 @@ import '../../app/state/transaction_provider.dart';
 import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../wallet/state/wallet_provider.dart';
+import 'data/credit_service.dart';
 
 enum CreditFundingMethod {
   pex,
@@ -50,6 +51,19 @@ enum CreditFundingMethod {
         return Icons.account_balance_outlined;
     }
   }
+
+  CreditFundingMethodDto get dto {
+    switch (this) {
+      case CreditFundingMethod.pex:
+        return CreditFundingMethodDto.pex;
+      case CreditFundingMethod.card:
+        return CreditFundingMethodDto.card;
+      case CreditFundingMethod.stablecoin:
+        return CreditFundingMethodDto.stablecoin;
+      case CreditFundingMethod.virtualAccount:
+        return CreditFundingMethodDto.virtualAccount;
+    }
+  }
 }
 
 class BuyCreditsView extends ConsumerStatefulWidget {
@@ -61,7 +75,9 @@ class BuyCreditsView extends ConsumerStatefulWidget {
 
 class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
   final TextEditingController _amountController = TextEditingController(text: '100');
+  final CreditService _creditService = CreditService();
   CreditFundingMethod selectedMethod = CreditFundingMethod.pex;
+  bool isProcessing = false;
 
   @override
   void dispose() {
@@ -72,14 +88,14 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
   double get creditAmount => double.tryParse(_amountController.text.trim()) ?? 0;
 
   bool _canBuy(WalletState wallet) {
-    if (creditAmount <= 0) return false;
+    if (isProcessing || creditAmount <= 0) return false;
     if (selectedMethod == CreditFundingMethod.pex) {
       return wallet.pex >= creditAmount;
     }
     return true;
   }
 
-  void _buyCredits() {
+  Future<void> _buyCredits() async {
     final wallet = ref.read(walletProvider);
 
     if (!_canBuy(wallet)) {
@@ -91,18 +107,45 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
       return;
     }
 
-    if (selectedMethod == CreditFundingMethod.pex) {
-      ref.read(walletProvider.notifier).buyCreditsWithPex(creditAmount);
-    } else {
-      ref.read(walletProvider.notifier).addCredits(creditAmount);
+    setState(() => isProcessing = true);
+
+    try {
+      final response = await _creditService.buyCredits(
+        method: selectedMethod.dto,
+        creditAmount: creditAmount,
+        pexBalance: wallet.pex,
+      );
+
+      if (!mounted) return;
+
+      if (!response.accepted) {
+        _showSnack(response.message.isEmpty ? 'Credit purchase was not accepted.' : response.message);
+        setState(() => isProcessing = false);
+        return;
+      }
+
+      if (selectedMethod == CreditFundingMethod.pex) {
+        ref.read(walletProvider.notifier).buyCreditsWithPex(response.creditAmount);
+      } else {
+        ref.read(walletProvider.notifier).addCredits(response.creditAmount);
+      }
+
+      ref.read(transactionProvider.notifier).addCreditPurchase(
+            method: selectedMethod.title,
+            credits: response.creditAmount,
+          );
+
+      _showSnack(
+        response.message.isEmpty
+            ? '${response.creditAmount.toStringAsFixed(0)} Credits added successfully.'
+            : response.message,
+      );
+      setState(() => isProcessing = false);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => isProcessing = false);
+      _showSnack(error.toString());
     }
-
-    ref.read(transactionProvider.notifier).addCreditPurchase(
-          method: selectedMethod.title,
-          credits: creditAmount,
-        );
-
-    _showSnack('${creditAmount.toStringAsFixed(0)} Credits added successfully.');
   }
 
   void _showSnack(String message) {
@@ -145,11 +188,13 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
             const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: canBuy ? _buyCredits : null,
-              icon: const Icon(Icons.add_card_rounded),
+              icon: Icon(isProcessing ? Icons.hourglass_bottom_rounded : Icons.add_card_rounded),
               label: Text(
-                selectedMethod == CreditFundingMethod.pex
-                    ? 'BUY CREDITS WITH PEX'
-                    : 'CONTINUE TO PAYMENT',
+                isProcessing
+                    ? 'PROCESSING CREDIT PURCHASE'
+                    : selectedMethod == CreditFundingMethod.pex
+                        ? 'BUY CREDITS WITH PEX'
+                        : 'CONTINUE TO PAYMENT',
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: PeraXColors.cyan,
