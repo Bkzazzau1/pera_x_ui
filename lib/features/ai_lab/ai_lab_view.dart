@@ -65,10 +65,10 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
     if (isProcessing || (!hasDocumentInput && !hasTextInput)) return;
 
-    if (wallet.pex < selectedTool.pexCost) {
+    if (wallet.credits < selectedTool.pexCost) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Insufficient PEX for this AI document service.'),
+          content: Text('Insufficient Credits for this AI document service.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -95,13 +95,10 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
       if (!mounted) return;
 
-      ref.read(walletProvider.notifier).burnPex(response.pexCost);
+      ref.read(walletProvider.notifier).spendCredits(response.pexCost);
       ref
           .read(transactionProvider.notifier)
           .addAiPrompt(model: selectedTool.label, pexCost: response.pexCost);
-      ref
-          .read(transactionProvider.notifier)
-          .addAiBurn(model: selectedTool.label, pexAmount: response.pexCost);
 
       setState(() {
         result = response;
@@ -145,7 +142,10 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           children: [
-            _AiLabHeader(walletBalance: wallet.pex),
+            _AiLabHeader(
+              pexBalance: wallet.pex,
+              creditBalance: wallet.credits,
+            ),
             const SizedBox(height: 20),
             _ToolSelector(
               selectedTool: selectedTool,
@@ -156,13 +156,13 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
             ),
             const SizedBox(height: 16),
             AiAccessStatusCard(
-              walletBalance: wallet.pex,
+              creditBalance: wallet.credits,
               selectedTool: selectedTool,
             ),
             const SizedBox(height: 16),
             AiToolFlowCard(
               tool: selectedTool,
-              walletBalance: wallet.pex,
+              walletBalance: wallet.credits,
             ),
             if (selectedTool == AiDocumentTool.humanizer) ...[
               const SizedBox(height: 16),
@@ -214,9 +214,13 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 }
 
 class _AiLabHeader extends StatelessWidget {
-  final double walletBalance;
+  final double pexBalance;
+  final double creditBalance;
 
-  const _AiLabHeader({required this.walletBalance});
+  const _AiLabHeader({
+    required this.pexBalance,
+    required this.creditBalance,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +253,7 @@ class _AiLabHeader extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'AI Detector, Humanizer AI, and Plagiarism Checker with token-gated access.',
+                'AI Detector, Humanizer AI, and Plagiarism Checker spend Credits. PEX remains the ecosystem token.',
                 style: TextStyle(
                   color: Colors.white54,
                   fontSize: 13,
@@ -260,17 +264,35 @@ class _AiLabHeader extends StatelessWidget {
             ],
           ),
         ),
-        GlassCard(
-          radius: 14,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(
-            '${walletBalance.toInt()} PEX',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            GlassCard(
+              radius: 14,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                '${creditBalance.toInt()} Credits',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            GlassCard(
+              radius: 14,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                '${pexBalance.toInt()} PEX',
+                style: const TextStyle(
+                  color: PeraXColors.cyan,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -348,7 +370,7 @@ class _ToolSelector extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${tool.pexCost.toInt()} PEX',
+                    '${tool.pexCost.toInt()} Credits',
                     style: const TextStyle(
                       color: PeraXColors.cyan,
                       fontWeight: FontWeight.w900,
@@ -588,7 +610,7 @@ class _RunPanel extends StatelessWidget {
       label: Text(
         isProcessing
             ? 'PROCESSING INPUT'
-            : 'RUN ${tool.label.toUpperCase()} // ${tool.pexCost.toInt()} PEX',
+            : 'RUN ${tool.label.toUpperCase()} // ${tool.pexCost.toInt()} CREDITS',
       ),
       style: FilledButton.styleFrom(
         backgroundColor: PeraXColors.cyan,
@@ -625,7 +647,7 @@ class _ProcessingState extends StatelessWidget {
           SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Backend is confirming token access and processing the AI task.',
+              'Backend is confirming credit access and processing the AI task.',
               style: TextStyle(
                 color: Colors.white70,
                 fontWeight: FontWeight.w700,
@@ -782,7 +804,7 @@ class _ResultPanel extends StatelessWidget {
     return '''${result.title}
 
 Score: ${result.score.toStringAsFixed(0)}%
-PEX Cost: ${result.pexCost.toStringAsFixed(0)} PEX
+Credit Cost: ${result.pexCost.toStringAsFixed(0)} Credits
 
 Summary:
 ${result.summary}
