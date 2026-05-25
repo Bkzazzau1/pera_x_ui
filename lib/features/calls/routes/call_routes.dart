@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../views/active_call_view.dart';
 import '../views/buy_international_number_view.dart';
-import '../views/buy_pex_credit_view.dart';
 import '../views/call_history_view.dart';
 import '../views/call_receipt_view.dart';
 import '../views/call_settings_view.dart';
@@ -15,7 +14,7 @@ class CallRoutes {
   static const String activeCall = '/pera-x/calls/active';
   static const String callReceipt = '/pera-x/calls/receipt';
   static const String callHistory = '/pera-x/calls/history';
-  static const String buyCredit = '/pera-x/calls/buy-credit';
+  static const String buyCredits = '/credits';
   static const String buyInternationalNumber =
       '/pera-x/calls/buy-international-number';
   static const String settings = '/pera-x/calls/settings';
@@ -23,7 +22,6 @@ class CallRoutes {
   static Map<String, WidgetBuilder> routes = {
     callHome: (_) => const PeraXCallView(),
     callHistory: (_) => const CallHistoryView(),
-    buyCredit: (_) => const BuyCreditView(),
     buyInternationalNumber: (_) => const BuyInternationalNumberView(),
     settings: (_) => const CallSettingsView(),
   };
