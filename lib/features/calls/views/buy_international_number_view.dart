@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../wallet/state/wallet_provider.dart';
 import '../data/call_service.dart';
 import '../models/international_number_model.dart';
 
-class BuyInternationalNumberView extends StatefulWidget {
+class BuyInternationalNumberView extends ConsumerStatefulWidget {
   const BuyInternationalNumberView({super.key});
 
   @override
-  State<BuyInternationalNumberView> createState() =>
+  ConsumerState<BuyInternationalNumberView> createState() =>
       _BuyInternationalNumberViewState();
 }
 
 class _BuyInternationalNumberViewState
-    extends State<BuyInternationalNumberView> {
+    extends ConsumerState<BuyInternationalNumberView> {
   final CallService service = CallService();
 
   bool isLoading = true;
   bool isSubmitting = false;
   int selectedNumberIndex = 0;
   String selectedPlan = 'Monthly';
-  double creditBalance = 0;
   List<InternationalNumberModel> numbers = [];
 
   InternationalNumberModel? get selectedNumber {
@@ -41,13 +43,11 @@ class _BuyInternationalNumberViewState
   }
 
   Future<void> loadNumbers() async {
-    final loadedBalance = await service.getCreditBalance();
     final loadedNumbers = await service.getInternationalNumbers();
 
     if (!mounted) return;
 
     setState(() {
-      creditBalance = loadedBalance;
       numbers = loadedNumbers;
       final popularIndex = numbers.indexWhere((number) => number.popular);
       selectedNumberIndex = popularIndex == -1 ? 0 : popularIndex;
@@ -59,13 +59,16 @@ class _BuyInternationalNumberViewState
     final number = selectedNumber;
     if (number == null) return;
 
-    if (creditBalance < totalDue) {
+    final wallet = ref.read(walletProvider);
+
+    if (wallet.credits < totalDue) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Insufficient Credits for this number package.'),
+          content: Text('Insufficient Credits. Buy Credits before reserving this number.'),
           backgroundColor: Color(0xFFDC2626),
         ),
       );
+      context.go('/credits');
       return;
     }
 
@@ -82,11 +85,15 @@ class _BuyInternationalNumberViewState
 
     setState(() => isSubmitting = false);
 
+    if (success) {
+      ref.read(walletProvider.notifier).spendCredits(totalDue);
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           success
-              ? '${number.sampleNumber} reserved for your account.'
+              ? '${number.sampleNumber} reserved. ${totalDue.toStringAsFixed(0)} Credits charged.'
               : 'International number purchase is not available yet.',
         ),
         backgroundColor: success
@@ -98,6 +105,8 @@ class _BuyInternationalNumberViewState
 
   @override
   Widget build(BuildContext context) {
+    final creditBalance = ref.watch(walletProvider).credits;
+
     return Scaffold(
       backgroundColor: const Color(0xFF020617),
       body: Container(
@@ -125,7 +134,7 @@ class _BuyInternationalNumberViewState
                     children: [
                       _buildHeader(context),
                       const SizedBox(height: 22),
-                      _buildHeroCard(),
+                      _buildHeroCard(creditBalance),
                       const SizedBox(height: 22),
                       const Text(
                         'Available Countries',
@@ -140,9 +149,9 @@ class _BuyInternationalNumberViewState
                       const SizedBox(height: 22),
                       _buildPlanSelector(),
                       const SizedBox(height: 22),
-                      _buildSummaryCard(),
+                      _buildSummaryCard(creditBalance),
                       const SizedBox(height: 24),
-                      _buildConfirmButton(),
+                      _buildConfirmButton(creditBalance),
                     ],
                   ),
                 ),
@@ -188,31 +197,35 @@ class _BuyInternationalNumberViewState
               ),
               SizedBox(height: 2),
               Text(
-                'Reserve an international line',
+                'Reserve an international line using Credits',
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
             ],
           ),
         ),
-        Container(
-          height: 42,
-          width: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: const Icon(
-            Icons.public_rounded,
-            color: Colors.white,
-            size: 21,
+        InkWell(
+          onTap: () => context.go('/credits'),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 42,
+            width: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: const Icon(
+              Icons.add_card_rounded,
+              color: Colors.white,
+              size: 21,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildHeroCard() {
+  Widget _buildHeroCard(double creditBalance) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -253,6 +266,15 @@ class _BuyInternationalNumberViewState
           const Text(
             'Receive calls and place outbound calls with a trusted local presence in supported countries.',
             style: TextStyle(color: Colors.white, fontSize: 20, height: 1.25),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '${creditBalance.toStringAsFixed(0)} Credits available',
+            style: const TextStyle(
+              color: Color(0xFF5EEAD4),
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -426,9 +448,12 @@ class _BuyInternationalNumberViewState
     );
   }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(double creditBalance) {
     final number = selectedNumber;
     if (number == null) return const SizedBox.shrink();
+
+    final balanceAfter = creditBalance - totalDue;
+    final hasEnoughCredits = balanceAfter >= 0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -465,6 +490,14 @@ class _BuyInternationalNumberViewState
             value: '${totalDue.toStringAsFixed(0)} Credits',
             strong: true,
           ),
+          _SummaryRow(
+            label: 'Credits after purchase',
+            value: hasEnoughCredits
+                ? '${balanceAfter.toStringAsFixed(0)} Credits'
+                : 'Insufficient Credits',
+            strong: true,
+            warning: !hasEnoughCredits,
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -478,11 +511,17 @@ class _BuyInternationalNumberViewState
     );
   }
 
-  Widget _buildConfirmButton() {
+  Widget _buildConfirmButton(double creditBalance) {
+    final hasEnoughCredits = creditBalance >= totalDue;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: isSubmitting ? null : confirmPurchase,
+        onPressed: isSubmitting
+            ? null
+            : hasEnoughCredits
+                ? confirmPurchase
+                : () => context.go('/credits'),
         icon: isSubmitting
             ? const SizedBox(
                 height: 18,
@@ -492,8 +531,16 @@ class _BuyInternationalNumberViewState
                   color: Colors.white,
                 ),
               )
-            : const Icon(Icons.shopping_cart_checkout_rounded),
-        label: Text(isSubmitting ? 'Reserving...' : 'Buy Number'),
+            : Icon(hasEnoughCredits
+                ? Icons.shopping_cart_checkout_rounded
+                : Icons.add_card_rounded),
+        label: Text(
+          isSubmitting
+              ? 'Reserving...'
+              : hasEnoughCredits
+                  ? 'Buy Number with Credits'
+                  : 'Buy Credits First',
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF14B8A6),
           disabledBackgroundColor: const Color(
@@ -571,11 +618,13 @@ class _SummaryRow extends StatelessWidget {
   final String label;
   final String value;
   final bool strong;
+  final bool warning;
 
   const _SummaryRow({
     required this.label,
     required this.value,
     this.strong = false,
+    this.warning = false,
   });
 
   @override
@@ -596,7 +645,11 @@ class _SummaryRow extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: strong ? const Color(0xFF5EEAD4) : Colors.white,
+              color: warning
+                  ? Colors.orange
+                  : strong
+                      ? const Color(0xFF5EEAD4)
+                      : Colors.white,
               fontWeight: FontWeight.w900,
             ),
           ),
