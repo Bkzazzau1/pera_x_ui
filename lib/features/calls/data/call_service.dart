@@ -1,9 +1,86 @@
+import '../../../core/api/api_client.dart';
+import '../../../core/config/app_config.dart';
 import '../models/call_destination_model.dart';
 import '../models/international_number_model.dart';
 import '../models/recent_call_model.dart';
 import 'call_static_data.dart';
 
+class StartCallResultDto {
+  final String callId;
+  final String status;
+  final String phoneNumber;
+  final String destination;
+  final double ratePerMinute;
+  final double creditBalance;
+  final int estimatedMinutes;
+  final double reservedCredits;
+  final String message;
+
+  const StartCallResultDto({
+    required this.callId,
+    required this.status,
+    required this.phoneNumber,
+    required this.destination,
+    required this.ratePerMinute,
+    required this.creditBalance,
+    required this.estimatedMinutes,
+    required this.reservedCredits,
+    required this.message,
+  });
+
+  bool get accepted => status == 'accepted';
+
+  factory StartCallResultDto.fromJson(Map<String, dynamic> json) {
+    return StartCallResultDto(
+      callId: json['callId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'rejected',
+      phoneNumber: json['phoneNumber']?.toString() ?? '',
+      destination: json['destination']?.toString() ?? '',
+      ratePerMinute: (json['ratePerMinute'] as num?)?.toDouble() ?? 0,
+      creditBalance: (json['creditBalance'] as num?)?.toDouble() ?? 0,
+      estimatedMinutes: (json['estimatedMinutes'] as num?)?.toInt() ?? 0,
+      reservedCredits: (json['reservedCredits'] as num?)?.toDouble() ?? 0,
+      message: json['message']?.toString() ?? '',
+    );
+  }
+}
+
+class EndCallResultDto {
+  final String callId;
+  final String status;
+  final int durationSeconds;
+  final double creditCost;
+  final double remainingCredits;
+  final String message;
+
+  const EndCallResultDto({
+    required this.callId,
+    required this.status,
+    required this.durationSeconds,
+    required this.creditCost,
+    required this.remainingCredits,
+    required this.message,
+  });
+
+  bool get completed => status == 'completed';
+
+  factory EndCallResultDto.fromJson(Map<String, dynamic> json) {
+    return EndCallResultDto(
+      callId: json['callId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'rejected',
+      durationSeconds: (json['durationSeconds'] as num?)?.toInt() ?? 0,
+      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 0,
+      remainingCredits: (json['remainingCredits'] as num?)?.toDouble() ?? 0,
+      message: json['message']?.toString() ?? '',
+    );
+  }
+}
+
 class CallService {
+  final ApiClient _apiClient;
+
+  CallService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+
   Future<double> getCreditBalance() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return 125.00;
@@ -64,24 +141,83 @@ class CallService {
     return true;
   }
 
-  Future<bool> startCallSession({
+  Future<StartCallResultDto> startCallSession({
     required String phoneNumber,
     required String destination,
     required bool isInternational,
     required double ratePerMinute,
+    required double creditBalance,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final accepted = creditBalance >= ratePerMinute;
 
-    return true;
+      return StartCallResultDto(
+        callId: 'demo_call_${DateTime.now().millisecondsSinceEpoch}',
+        status: accepted ? 'accepted' : 'rejected',
+        phoneNumber: phoneNumber,
+        destination: destination,
+        ratePerMinute: ratePerMinute,
+        creditBalance: creditBalance,
+        estimatedMinutes: ratePerMinute <= 0 ? 0 : (creditBalance / ratePerMinute).floor(),
+        reservedCredits: accepted ? ratePerMinute : 0,
+        message: accepted
+            ? 'Call session accepted. Credits will be charged by duration.'
+            : 'Call rejected. Check available Credits.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/telecom/calls/start',
+      body: {
+        'phoneNumber': phoneNumber,
+        'destination': destination,
+        'isInternational': isInternational,
+        'ratePerMinute': ratePerMinute,
+        'creditBalance': creditBalance,
+      },
+    );
+
+    return StartCallResultDto.fromJson(response as Map<String, dynamic>);
   }
 
-  Future<bool> endCallSession({
+  Future<EndCallResultDto> endCallSession({
+    required String callId,
     required String phoneNumber,
-    required String duration,
-    required double charge,
+    required int durationSeconds,
+    required double ratePerMinute,
+    required double creditBalance,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final billedMinutes = (durationSeconds / 60).ceil().clamp(1, 999999);
+      final creditCost = billedMinutes * ratePerMinute;
+      final remainingCredits = creditBalance - creditCost;
+      final completed = remainingCredits >= 0;
 
-    return true;
+      return EndCallResultDto(
+        callId: callId,
+        status: completed ? 'completed' : 'rejected',
+        durationSeconds: durationSeconds,
+        creditCost: completed ? creditCost : 0,
+        remainingCredits: remainingCredits,
+        message: completed
+            ? 'Call completed. Credits deducted by billed duration.'
+            : 'Call completion rejected. Insufficient Credits.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/telecom/calls/end',
+      body: {
+        'callId': callId,
+        'phoneNumber': phoneNumber,
+        'durationSeconds': durationSeconds,
+        'ratePerMinute': ratePerMinute,
+        'creditBalance': creditBalance,
+      },
+    );
+
+    return EndCallResultDto.fromJson(response as Map<String, dynamic>);
   }
 }
