@@ -5,19 +5,19 @@ import '../../../shared/widgets/glass_card.dart';
 import '../data/ai_service.dart';
 
 class AiAccessStatusCard extends StatelessWidget {
-  final double walletBalance;
+  final double creditBalance;
   final AiDocumentTool selectedTool;
 
   const AiAccessStatusCard({
     super.key,
-    required this.walletBalance,
+    required this.creditBalance,
     required this.selectedTool,
   });
 
   @override
   Widget build(BuildContext context) {
     final cost = selectedTool.pexCost;
-    final remaining = walletBalance - cost;
+    final remaining = creditBalance - cost;
     final hasAccess = remaining >= 0;
 
     return GlassCard(
@@ -56,7 +56,7 @@ class AiAccessStatusCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hasAccess ? 'AI Access Ready' : 'Token Access Required',
+                      hasAccess ? 'Credit Access Ready' : 'Credits Required',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
@@ -66,8 +66,8 @@ class AiAccessStatusCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       hasAccess
-                          ? 'Backend will still confirm token access before processing.'
-                          : 'Top up Pera-X before running this AI tool.',
+                          ? 'Backend will confirm credit access before processing.'
+                          : 'Buy Credits before running this AI tool.',
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 12,
@@ -84,15 +84,15 @@ class AiAccessStatusCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _AccessMetric(
-                  label: 'Available',
-                  value: '${walletBalance.toStringAsFixed(0)} PEX',
+                  label: 'Credits',
+                  value: creditBalance.toStringAsFixed(0),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _AccessMetric(
                   label: 'Tool Cost',
-                  value: '${cost.toStringAsFixed(0)} PEX',
+                  value: '${cost.toStringAsFixed(0)} Credits',
                 ),
               ),
               const SizedBox(width: 10),
@@ -100,7 +100,7 @@ class AiAccessStatusCard extends StatelessWidget {
                 child: _AccessMetric(
                   label: 'After Run',
                   value: hasAccess
-                      ? '${remaining.toStringAsFixed(0)} PEX'
+                      ? '${remaining.toStringAsFixed(0)} Credits'
                       : 'Insufficient',
                   isWarning: !hasAccess,
                 ),
