@@ -41,8 +41,9 @@ class _MainShellState extends State<MainShell>
     if (location.startsWith('/pera-x/calls')) return 2;
     if (location.startsWith('/bills')) return 3;
     if (location.startsWith('/wallet')) return 4;
-    if (location.startsWith('/market')) return 5;
-    if (location.startsWith('/checkout')) return 6;
+    if (location.startsWith('/credits')) return 5;
+    if (location.startsWith('/market')) return 6;
+    if (location.startsWith('/checkout')) return 7;
     return 0;
   }
 
@@ -64,9 +65,12 @@ class _MainShellState extends State<MainShell>
         context.go('/wallet');
         break;
       case 5:
-        context.go('/market');
+        context.go('/credits');
         break;
       case 6:
+        context.go('/market');
+        break;
+      case 7:
         context.go('/checkout');
         break;
     }
@@ -477,6 +481,11 @@ const _navItems = [
     label: 'Wallet',
     icon: Icons.account_balance_wallet_rounded,
     outlinedIcon: Icons.account_balance_wallet_outlined,
+  ),
+  _NavItem(
+    label: 'Buy Credits',
+    icon: Icons.add_card_rounded,
+    outlinedIcon: Icons.add_card_outlined,
   ),
   _NavItem(
     label: 'Market',
