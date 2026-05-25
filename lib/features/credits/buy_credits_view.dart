@@ -97,9 +97,9 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
       ref.read(walletProvider.notifier).addCredits(creditAmount);
     }
 
-    ref.read(transactionProvider.notifier).addTopUp(
+    ref.read(transactionProvider.notifier).addCreditPurchase(
           method: selectedMethod.title,
-          pexAmount: creditAmount,
+          credits: creditAmount,
         );
 
     _showSnack('${creditAmount.toStringAsFixed(0)} Credits added successfully.');
@@ -440,7 +440,7 @@ class _CreditSummary extends StatelessWidget {
           const SizedBox(height: 10),
           const Text(
             'Trading company settlement, provider payment, buyback, burn, liquidity support, and operating margin will be handled by backend policy.',
-            style: TextStyle(color: Colors.white45, fontSize: 11, height: 1.45),
+            style: TextStyle(color: Colors.white54, fontSize: 11, height: 1.45),
           ),
         ],
       ),

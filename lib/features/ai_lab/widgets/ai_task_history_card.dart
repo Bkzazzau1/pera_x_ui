@@ -3,19 +3,20 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../data/ai_service.dart';
+import '../utils/ai_score_color.dart';
 
 class AiTaskHistoryEntry {
   final AiDocumentTool tool;
   final String title;
   final double score;
-  final double pexCost;
+  final double creditCost;
   final DateTime createdAt;
 
   const AiTaskHistoryEntry({
     required this.tool,
     required this.title,
     required this.score,
-    required this.pexCost,
+    required this.creditCost,
     required this.createdAt,
   });
 }
@@ -54,7 +55,10 @@ class AiTaskHistoryCard extends StatelessWidget {
                 GestureDetector(
                   onTap: onClear,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(12),
@@ -89,11 +93,17 @@ class AiTaskHistoryCard extends StatelessWidget {
               ),
               child: const Text(
                 'No AI tasks yet. Run any AI tool and your recent result will appear here.',
-                style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
             )
           else
-            ...entries.take(5).map(
+            ...entries
+                .take(5)
+                .map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _HistoryItem(entry: entry),
@@ -128,7 +138,11 @@ class _HistoryItem extends StatelessWidget {
               color: PeraXColors.cyan.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(_iconFor(entry.tool), color: PeraXColors.cyan, size: 22),
+            child: Icon(
+              _iconFor(entry.tool),
+              color: PeraXColors.cyan,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -147,7 +161,7 @@ class _HistoryItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${entry.tool.label} • ${entry.pexCost.toStringAsFixed(0)} PEX • ${_timeLabel(entry.createdAt)}',
+                  '${entry.tool.label} • ${entry.creditCost.toStringAsFixed(0)} Credits • ${_timeLabel(entry.createdAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -162,8 +176,8 @@ class _HistoryItem extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             '${entry.score.toStringAsFixed(0)}%',
-            style: const TextStyle(
-              color: PeraXColors.cyan,
+            style: TextStyle(
+              color: getAiScoreColor(entry.score),
               fontWeight: FontWeight.w900,
               fontSize: 14,
             ),

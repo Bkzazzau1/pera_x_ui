@@ -9,6 +9,7 @@ import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../wallet/state/wallet_provider.dart';
 import 'data/ai_service.dart';
+import 'utils/ai_score_color.dart';
 import 'widgets/ai_access_status_card.dart';
 import 'widgets/ai_task_history_card.dart';
 import 'widgets/ai_tool_flow_card.dart';
@@ -65,7 +66,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
     if (isProcessing || (!hasDocumentInput && !hasTextInput)) return;
 
-    if (wallet.credits < selectedTool.pexCost) {
+    if (wallet.credits < selectedTool.creditCost) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Insufficient Credits for this AI document service.'),
@@ -90,15 +91,20 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
         tool: selectedTool,
         fileName: file?.name,
         fileBytes: bytes,
-        pastedText: toolInstructions.trim().isEmpty ? null : toolInstructions.trim(),
+        pastedText: toolInstructions.trim().isEmpty
+            ? null
+            : toolInstructions.trim(),
       );
 
       if (!mounted) return;
 
-      ref.read(walletProvider.notifier).spendCredits(response.pexCost);
+      ref.read(walletProvider.notifier).spendCredits(response.creditCost);
       ref
           .read(transactionProvider.notifier)
-          .addAiPrompt(model: selectedTool.label, pexCost: response.pexCost);
+          .addAiPrompt(
+            model: selectedTool.label,
+            creditCost: response.creditCost,
+          );
 
       setState(() {
         result = response;
@@ -108,7 +114,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
             tool: selectedTool,
             title: response.title,
             score: response.score,
-            pexCost: response.pexCost,
+            creditCost: response.creditCost,
             createdAt: DateTime.now(),
           ),
         );
@@ -133,7 +139,8 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
   @override
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
-    final hasInput = selectedFile != null || _notesController.text.trim().isNotEmpty;
+    final hasInput =
+        selectedFile != null || _notesController.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -142,10 +149,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           children: [
-            _AiLabHeader(
-              pexBalance: wallet.pex,
-              creditBalance: wallet.credits,
-            ),
+            _AiLabHeader(pexBalance: wallet.pex, creditBalance: wallet.credits),
             const SizedBox(height: 20),
             _ToolSelector(
               selectedTool: selectedTool,
@@ -160,10 +164,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
               selectedTool: selectedTool,
             ),
             const SizedBox(height: 16),
-            AiToolFlowCard(
-              tool: selectedTool,
-              walletBalance: wallet.credits,
-            ),
+            AiToolFlowCard(tool: selectedTool, walletBalance: wallet.credits),
             if (selectedTool == AiDocumentTool.humanizer) ...[
               const SizedBox(height: 16),
               _HumanizerToneSelector(
@@ -217,10 +218,7 @@ class _AiLabHeader extends StatelessWidget {
   final double pexBalance;
   final double creditBalance;
 
-  const _AiLabHeader({
-    required this.pexBalance,
-    required this.creditBalance,
-  });
+  const _AiLabHeader({required this.pexBalance, required this.creditBalance});
 
   @override
   Widget build(BuildContext context) {
@@ -370,7 +368,7 @@ class _ToolSelector extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${tool.pexCost.toInt()} Credits',
+                    '${tool.creditCost.toInt()} Credits',
                     style: const TextStyle(
                       color: PeraXColors.cyan,
                       fontWeight: FontWeight.w900,
@@ -435,14 +433,19 @@ class _HumanizerToneSelector extends StatelessWidget {
                 onTap: () => onSelected(tone.$1),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
                   decoration: BoxDecoration(
                     color: isActive
                         ? PeraXColors.cyan
                         : PeraXColors.surfaceBlue.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isActive ? Colors.white24 : PeraXColors.glassBorder,
+                      color: isActive
+                          ? Colors.white24
+                          : PeraXColors.glassBorder,
                     ),
                   ),
                   child: Row(
@@ -610,7 +613,7 @@ class _RunPanel extends StatelessWidget {
       label: Text(
         isProcessing
             ? 'PROCESSING INPUT'
-            : 'RUN ${tool.label.toUpperCase()} // ${tool.pexCost.toInt()} CREDITS',
+            : 'RUN ${tool.label.toUpperCase()} // ${tool.creditCost.toInt()} CREDITS',
       ),
       style: FilledButton.styleFrom(
         backgroundColor: PeraXColors.cyan,
@@ -668,10 +671,14 @@ class _ResultPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reportText = _formatReport(result);
+    final scoreColor = getAiScoreColor(result.score);
+    final scoreLabel = _scoreLabel(result);
 
     return GlassCard(
       radius: 26,
       padding: const EdgeInsets.all(20),
+      backgroundColor: const Color(0xFF0A1931).withValues(alpha: 0.88),
+      borderColor: const Color(0x3300E5FF),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -688,9 +695,9 @@ class _ResultPanel extends StatelessWidget {
                 ),
               ),
               Text(
-                '${result.score.toStringAsFixed(0)}%',
-                style: const TextStyle(
-                  color: PeraXColors.cyan,
+                scoreLabel,
+                style: TextStyle(
+                  color: scoreColor,
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                 ),
@@ -700,7 +707,7 @@ class _ResultPanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             result.summary,
-            style: const TextStyle(color: Colors.white70, height: 1.45),
+            style: const TextStyle(color: Color(0xFFB8C7E0), height: 1.45),
           ),
           const SizedBox(height: 16),
           ...result.findings.map(
@@ -719,7 +726,7 @@ class _ResultPanel extends StatelessWidget {
                     child: Text(
                       finding,
                       style: const TextStyle(
-                        color: Colors.white60,
+                        color: Color(0xFFB8C7E0),
                         height: 1.35,
                       ),
                     ),
@@ -733,9 +740,9 @@ class _ResultPanel extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.18),
+              color: const Color(0xFF071426),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: PeraXColors.glassBorder),
+              border: Border.all(color: scoreColor.withValues(alpha: 0.52)),
             ),
             child: Text(
               result.output,
@@ -783,7 +790,9 @@ class _ResultPanel extends StatelessWidget {
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Download export will be connected with backend storage.'),
+                      content: Text(
+                        'Download export will be connected with backend storage.',
+                      ),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -796,6 +805,14 @@ class _ResultPanel extends StatelessWidget {
     );
   }
 
+  String _scoreLabel(AiDocumentResultDto result) {
+    final scoreText = '${result.score.toStringAsFixed(0)}%';
+    if (result.title.toLowerCase().contains('detection')) {
+      return '$scoreText AI-Likely';
+    }
+    return scoreText;
+  }
+
   String _formatReport(AiDocumentResultDto result) {
     final findingsText = result.findings
         .map((finding) => '- $finding')
@@ -804,7 +821,7 @@ class _ResultPanel extends StatelessWidget {
     return '''${result.title}
 
 Score: ${result.score.toStringAsFixed(0)}%
-Credit Cost: ${result.pexCost.toStringAsFixed(0)} Credits
+Credit Cost: ${result.creditCost.toStringAsFixed(0)} Credits
 
 Summary:
 ${result.summary}

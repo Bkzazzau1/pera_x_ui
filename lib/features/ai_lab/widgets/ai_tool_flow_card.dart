@@ -16,7 +16,7 @@ class AiToolFlowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasAccess = walletBalance >= tool.pexCost;
+    final hasAccess = walletBalance >= tool.creditCost;
     final steps = _stepsFor(tool);
 
     return GlassCard(
@@ -90,8 +90,8 @@ class AiToolFlowCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     hasAccess
-                        ? 'Token access ready. Backend will confirm balance before processing.'
-                        : 'More Pera-X is required before this AI task can run.',
+                        ? 'Credit access ready. Backend will confirm balance before processing.'
+                        : 'More Credits are required before this AI task can run.',
                     style: TextStyle(
                       color: hasAccess ? PeraXColors.cyan : Colors.orange,
                       fontWeight: FontWeight.w800,
@@ -163,21 +163,21 @@ class AiToolFlowCard extends StatelessWidget {
       case AiDocumentTool.detector:
         return const [
           'Upload document or paste text.',
-          'Backend confirms Pera-X token access.',
+          'Backend confirms Credit access.',
           'AI scans predictability, repetition, and sentence pattern risk.',
           'Show AI probability score, flagged signals, and improvement advice.',
         ];
       case AiDocumentTool.plagiarism:
         return const [
           'Upload document or paste text.',
-          'Backend confirms Pera-X token access.',
+          'Backend confirms Credit access.',
           'Similarity engine checks matching and citation risk.',
           'Show similarity score, risky sections, and citation recommendations.',
         ];
       case AiDocumentTool.humanizer:
         return const [
           'Upload document or paste text.',
-          'Backend confirms Pera-X token access.',
+          'Backend confirms Credit access.',
           'User can add tone instructions before processing.',
           'Show humanized output with copy-ready rewritten text.',
         ];

@@ -23,8 +23,6 @@ enum AiDocumentTool {
     required this.creditCost,
   });
 
-  /// Temporary compatibility while other UI files are migrated from pexCost.
-  double get pexCost => creditCost;
 }
 
 class AiDocumentResultDto {
@@ -44,18 +42,12 @@ class AiDocumentResultDto {
     required this.output,
   });
 
-  /// Temporary compatibility while other UI files are migrated from pexCost.
-  double get pexCost => creditCost;
-
   factory AiDocumentResultDto.fromJson(Map<String, dynamic> json) {
     return AiDocumentResultDto(
       title: json['title']?.toString() ?? 'Document Result',
       summary: json['summary']?.toString() ?? '',
       score: (json['score'] as num?)?.toDouble() ?? 0,
-      creditCost:
-          (json['creditCost'] as num?)?.toDouble() ??
-          (json['pexCost'] as num?)?.toDouble() ??
-          6,
+      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 6,
       findings:
           (json['findings'] as List?)
               ?.map((item) => item.toString())

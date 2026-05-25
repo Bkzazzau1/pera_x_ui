@@ -16,7 +16,7 @@ class AiAccessStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cost = selectedTool.pexCost;
+    final cost = selectedTool.creditCost;
     final remaining = creditBalance - cost;
     final hasAccess = remaining >= 0;
 
