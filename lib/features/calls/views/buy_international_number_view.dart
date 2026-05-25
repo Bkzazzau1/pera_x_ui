@@ -74,33 +74,53 @@ class _BuyInternationalNumberViewState
 
     setState(() => isSubmitting = true);
 
-    final success = await service.purchaseInternationalNumber(
-      country: number.country,
-      number: number.sampleNumber,
-      plan: selectedPlan,
-      creditAmount: totalDue,
-    );
+    try {
+      final response = await service.purchaseInternationalNumber(
+        country: number.country,
+        number: number.sampleNumber,
+        plan: selectedPlan,
+        creditAmount: totalDue,
+        creditBalance: wallet.credits,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() => isSubmitting = false);
+      setState(() => isSubmitting = false);
 
-    if (success) {
-      ref.read(walletProvider.notifier).spendCredits(totalDue);
-    }
+      if (!response.reserved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message.isEmpty
+                  ? 'Global number reservation was rejected.'
+                  : response.message,
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? '${number.sampleNumber} reserved. ${totalDue.toStringAsFixed(0)} Credits charged.'
-              : 'International number purchase is not available yet.',
+      ref.read(walletProvider.notifier).spendCredits(response.creditCost);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${response.phoneNumber} reserved. ${response.creditCost.toStringAsFixed(0)} Credits charged.',
+          ),
+          backgroundColor: const Color(0xFF16A34A),
         ),
-        backgroundColor: success
-            ? const Color(0xFF16A34A)
-            : const Color(0xFFDC2626),
-      ),
-    );
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
   }
 
   @override
