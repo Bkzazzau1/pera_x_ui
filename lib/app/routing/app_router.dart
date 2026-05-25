@@ -11,6 +11,7 @@ import '../../features/calls/views/call_receipt_view.dart';
 import '../../features/calls/views/call_settings_view.dart';
 import '../../features/calls/views/pera_x_call_view.dart';
 import '../../features/checkout/checkout_view.dart';
+import '../../features/credits/buy_credits_view.dart';
 import '../../features/dashboard/dashboard_view.dart';
 import '../../features/market/market_view.dart';
 import '../../features/wallet/wallet_view.dart';
@@ -63,6 +64,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/wallet',
           builder: (context, state) => const WalletView(),
+        ),
+        GoRoute(
+          path: '/credits',
+          builder: (context, state) => const BuyCreditsView(),
         ),
         GoRoute(
           path: '/checkout',
