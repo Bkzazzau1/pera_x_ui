@@ -4,7 +4,7 @@ import '../models/recent_call_model.dart';
 import 'call_static_data.dart';
 
 class CallService {
-  Future<double> getPexBalance() async {
+  Future<double> getCreditBalance() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return 125.00;
   }
@@ -29,7 +29,7 @@ class CallService {
     return CallStaticData.callHistory;
   }
 
-  Future<List<Map<String, dynamic>>> getPexPackages() async {
+  Future<List<Map<String, dynamic>>> getCreditPackages() async {
     await Future.delayed(const Duration(milliseconds: 250));
     return CallStaticData.pexPackages;
   }
@@ -44,8 +44,8 @@ class CallService {
     return CallStaticData.internationalNumbers;
   }
 
-  Future<bool> createTopUpRequest({
-    required int pexAmount,
+  Future<bool> createCreditPurchaseRequest({
+    required int creditAmount,
     required String paymentMethod,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
@@ -57,7 +57,7 @@ class CallService {
     required String country,
     required String number,
     required String plan,
-    required double pexAmount,
+    required double creditAmount,
   }) async {
     await Future.delayed(const Duration(milliseconds: 650));
 
