@@ -12,7 +12,7 @@ class CallController extends ChangeNotifier {
   bool isLoading = false;
   bool isInternational = false;
 
-  double pexBalance = 0.00;
+  double creditBalance = 0.00;
   String phoneNumber = '+234 ';
 
   late CallDestinationModel selectedDestination;
@@ -27,14 +27,14 @@ class CallController extends ChangeNotifier {
 
   int get estimatedMinutes {
     if (selectedDestination.ratePerMinute <= 0) return 0;
-    return (pexBalance / selectedDestination.ratePerMinute).floor();
+    return (creditBalance / selectedDestination.ratePerMinute).floor();
   }
 
   Future<void> init() async {
     isLoading = true;
     notifyListeners();
 
-    pexBalance = await service.getPexBalance();
+    creditBalance = await service.getCreditBalance();
     localDestinations = await service.getLocalDestinations();
     internationalDestinations = await service.getInternationalDestinations();
     recentCalls = await service.getRecentCalls();
