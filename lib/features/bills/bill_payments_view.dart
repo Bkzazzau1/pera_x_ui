@@ -129,7 +129,7 @@ class _BillsHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Pay data, airtime, electricity, TV, and internet bills in eligible countries. Use card, stablecoin, eligible-country VA, or Pera-X for discounts.',
+          'Pay data, airtime, electricity, TV, and internet bills in eligible countries. Buy Credits with PEX, card, stablecoin, or eligible-country VA, then spend Credits on services.',
           style: TextStyle(color: Colors.white60, fontSize: 14, height: 1.45),
         ),
         const SizedBox(height: 22),
@@ -157,7 +157,7 @@ class _BillsHeader extends StatelessWidget {
               const SizedBox(width: 14),
               const Expanded(
                 child: Text(
-                  'Bill payment rails are enabled only for eligible countries, while checkout remains Pera-X branded and payment-method flexible.',
+                  'Bill payment rails are enabled only for eligible countries. Checkout remains Pera-X branded, while service spending uses Credits.',
                   style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.4),
                 ),
               ),
@@ -316,12 +316,12 @@ class _BillProductCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 const Text(
-                  'Pay normally or use Pera-X for discount and rewards.',
+                  'Spend Credits for this service. Buy Credits using PEX or other supported payment methods.',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '\$${product.price.toStringAsFixed(2)}',
+                  '${product.price.toStringAsFixed(0)} Credits',
                   style: const TextStyle(
                     color: PeraXColors.cyan,
                     fontWeight: FontWeight.w900,
