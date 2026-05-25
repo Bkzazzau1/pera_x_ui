@@ -14,6 +14,6 @@ class CallDestinationModel {
   });
 
   String get displayRate {
-    return '${ratePerMinute.toStringAsFixed(2)} PEX/min';
+    return '${ratePerMinute.toStringAsFixed(2)} Credits/min';
   }
 }
