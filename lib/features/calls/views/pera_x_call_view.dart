@@ -170,12 +170,13 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
       }
 
       final activeCall = controller.activeCall;
+      if (activeCall == null) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            activeCall?.message.isNotEmpty == true
-                ? activeCall!.message
+            activeCall.message.isNotEmpty
+                ? activeCall.message
                 : controller.isInternational
                     ? 'Starting international call to $number'
                     : 'Starting local call to $number',
@@ -187,6 +188,7 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
       context.push(
         CallRoutes.activeCall,
         extra: ActiveCallArgs(
+          callId: activeCall.callId,
           phoneNumber: number,
           destination: controller.selectedDestination.country,
           isInternational: controller.isInternational,
