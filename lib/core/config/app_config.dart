@@ -3,13 +3,13 @@ class AppConfig {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.pera-x.demo',
+    defaultValue: 'http://127.0.0.1:8080',
   );
 
   static const Duration apiTimeout = Duration(seconds: 30);
 
   static const bool enableMockMode = bool.fromEnvironment(
     'ENABLE_MOCK_MODE',
-    defaultValue: true,
+    defaultValue: false,
   );
 }
