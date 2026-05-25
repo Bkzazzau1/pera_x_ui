@@ -330,7 +330,7 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
           ),
           onSelected: (value) {
             if (value == 'buy_credit') {
-              context.push(CallRoutes.buyCredit);
+              context.go('/credits');
             }
 
             if (value == 'buy_number') {
@@ -345,7 +345,7 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
             PopupMenuItem(
               value: 'buy_credit',
               child: Text(
-                'Buy Call Credits',
+                'Buy Credits',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -397,7 +397,7 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
               const _HeroBadge(),
               const Spacer(),
               InkWell(
-                onTap: () => context.push(CallRoutes.buyCredit),
+                onTap: () => context.go('/credits'),
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
                   height: 42,
@@ -437,7 +437,7 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'Available Call Credit',
+            'Available Credits',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
