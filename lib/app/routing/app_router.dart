@@ -81,6 +81,7 @@ final appRouter = GoRouter(
         final args = state.extra as ActiveCallArgs;
 
         return ActiveCallView(
+          callId: args.callId,
           phoneNumber: args.phoneNumber,
           destination: args.destination,
           isInternational: args.isInternational,
