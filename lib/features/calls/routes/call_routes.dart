@@ -34,6 +34,7 @@ class CallRoutes {
 
       return MaterialPageRoute(
         builder: (_) => ActiveCallView(
+          callId: args.callId,
           phoneNumber: args.phoneNumber,
           destination: args.destination,
           isInternational: args.isInternational,
@@ -61,12 +62,14 @@ class CallRoutes {
 }
 
 class ActiveCallArgs {
+  final String callId;
   final String phoneNumber;
   final String destination;
   final bool isInternational;
   final double ratePerMinute;
 
   const ActiveCallArgs({
+    required this.callId,
     required this.phoneNumber,
     required this.destination,
     required this.isInternational,
