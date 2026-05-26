@@ -7,16 +7,18 @@ import '../data/ai_service.dart';
 class AiToolFlowCard extends StatelessWidget {
   final AiDocumentTool tool;
   final double walletBalance;
+  final double creditCost;
 
   const AiToolFlowCard({
     super.key,
     required this.tool,
     required this.walletBalance,
+    required this.creditCost,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasAccess = walletBalance >= tool.creditCost;
+    final hasAccess = walletBalance >= creditCost;
     final steps = _stepsFor(tool);
 
     return GlassCard(
@@ -52,7 +54,7 @@ class AiToolFlowCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _subtitleFor(tool),
+                      '${_subtitleFor(tool)} • ${creditCost.toStringAsFixed(0)} Credits',
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 12,
@@ -114,12 +116,12 @@ class AiToolFlowCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           ...steps.asMap().entries.map(
-            (entry) => _FlowStep(
-              index: entry.key + 1,
-              text: entry.value,
-              isLast: entry.key == steps.length - 1,
-            ),
-          ),
+                (entry) => _FlowStep(
+                  index: entry.key + 1,
+                  text: entry.value,
+                  isLast: entry.key == steps.length - 1,
+                ),
+              ),
         ],
       ),
     );
