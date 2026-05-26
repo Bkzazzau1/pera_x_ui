@@ -126,6 +126,39 @@ class ReserveNumberResultDto {
   }
 }
 
+class NumberSubscriptionActionDto {
+  final String id;
+  final String phoneNumber;
+  final String status;
+  final String billingStatus;
+  final double? monthlyFeeCredits;
+  final DateTime? nextRenewalAt;
+  final String message;
+
+  const NumberSubscriptionActionDto({
+    required this.id,
+    required this.phoneNumber,
+    required this.status,
+    required this.billingStatus,
+    required this.message,
+    this.monthlyFeeCredits,
+    this.nextRenewalAt,
+  });
+
+  factory NumberSubscriptionActionDto.fromJson(Map<String, dynamic> json) {
+    return NumberSubscriptionActionDto(
+      id: json['id']?.toString() ?? '',
+      phoneNumber: json['phoneNumber']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      billingStatus: json['billingStatus']?.toString() ?? '',
+      monthlyFeeCredits: (json['monthlyFeeCredits'] as num?)?.toDouble(),
+      nextRenewalAt:
+          DateTime.tryParse(json['nextRenewalAt']?.toString() ?? ''),
+      message: json['message']?.toString() ?? '',
+    );
+  }
+}
+
 class CallService {
   final ApiClient _apiClient;
 
@@ -221,6 +254,9 @@ class CallService {
           country: 'United States',
           plan: 'Monthly',
           status: 'reserved',
+          monthlyFeeCredits: 30,
+          nextRenewalAt: DateTime.now().add(const Duration(days: 22)),
+          billingStatus: 'active',
           createdAt: DateTime.now().subtract(const Duration(hours: 2)),
         ),
       ];
@@ -233,6 +269,53 @@ class CallService {
     return numbers
         .map((item) => MyNumberModel.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<NumberSubscriptionActionDto> cancelNumberSubscription({
+    required String numberId,
+  }) async {
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return NumberSubscriptionActionDto(
+        id: numberId,
+        phoneNumber: '+14155550198',
+        status: 'cancelled',
+        billingStatus: 'cancelled',
+        monthlyFeeCredits: 30,
+        message: 'Number subscription cancelled. Renewal billing has stopped.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/telecom/numbers/$numberId/cancel',
+      body: const {},
+    );
+
+    return NumberSubscriptionActionDto.fromJson(response as Map<String, dynamic>);
+  }
+
+  Future<NumberSubscriptionActionDto> reactivateNumberSubscription({
+    required String numberId,
+  }) async {
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return NumberSubscriptionActionDto(
+        id: numberId,
+        phoneNumber: '+14155550198',
+        status: 'reserved',
+        billingStatus: 'active',
+        monthlyFeeCredits: 30,
+        nextRenewalAt: DateTime.now().add(const Duration(days: 30)),
+        message: 'Number subscription reactivated.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/telecom/numbers/$numberId/reactivate',
+      body: const {},
+    );
+
+    return NumberSubscriptionActionDto.fromJson(response as Map<String, dynamic>);
   }
 
   Future<List<SmsMessageModel>> getSmsInbox({
