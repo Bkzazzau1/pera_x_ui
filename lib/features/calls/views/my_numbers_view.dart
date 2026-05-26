@@ -114,6 +114,9 @@ class _MyNumbersViewState extends State<MyNumbersView> {
                     (number) => _MyNumberTile(
                       number: number,
                       createdDate: _formatDate(number.createdAt),
+                      nextRenewalDate: number.nextRenewalAt == null
+                          ? 'Not set'
+                          : _formatDate(number.nextRenewalAt!),
                       onOpenMessages: () => openMessages(number.phoneNumber),
                     ),
                   ),
@@ -162,7 +165,7 @@ class _MyNumbersViewState extends State<MyNumbersView> {
               ),
               SizedBox(height: 2),
               Text(
-                'Manage global numbers and messages',
+                'Manage global number subscriptions',
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
             ],
@@ -233,7 +236,7 @@ class _MyNumbersViewState extends State<MyNumbersView> {
                 ),
                 const SizedBox(height: 5),
                 const Text(
-                  'Open any number to view incoming SMS messages delivered through the telecom webhook.',
+                  'Each number is a recurring subscription. Open Messages to view incoming SMS on that number.',
                   style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.35),
                 ),
               ],
@@ -248,19 +251,25 @@ class _MyNumbersViewState extends State<MyNumbersView> {
 class _MyNumberTile extends StatelessWidget {
   final MyNumberModel number;
   final String createdDate;
+  final String nextRenewalDate;
   final VoidCallback onOpenMessages;
 
   const _MyNumberTile({
     required this.number,
     required this.createdDate,
+    required this.nextRenewalDate,
     required this.onOpenMessages,
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = number.status.toLowerCase() == 'reserved'
+    final billingStatus = number.billingStatus ?? 'active';
+    final statusColor = billingStatus.toLowerCase() == 'active'
         ? const Color(0xFF5EEAD4)
         : Colors.orange;
+    final monthlyFee = number.monthlyFeeCredits == null
+        ? 'Not set'
+        : '${number.monthlyFeeCredits!.toStringAsFixed(0)} Credits/mo';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -302,7 +311,7 @@ class _MyNumberTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      '${number.country ?? 'Global'} • ${number.plan ?? 'Plan'} • $createdDate',
+                      '${number.country ?? 'Global'} • ${number.plan ?? 'Monthly'} • Added $createdDate',
                       style: const TextStyle(
                         color: Colors.white54,
                         fontWeight: FontWeight.w700,
@@ -319,12 +328,32 @@ class _MyNumberTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Text(
-                  number.status.toUpperCase(),
+                  billingStatus.toUpperCase(),
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _NumberMetric(
+                  icon: Icons.payments_rounded,
+                  label: 'Monthly fee',
+                  value: monthlyFee,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _NumberMetric(
+                  icon: Icons.event_repeat_rounded,
+                  label: 'Next renewal',
+                  value: nextRenewalDate,
                 ),
               ),
             ],
@@ -380,6 +409,56 @@ class _MyNumberTile extends StatelessWidget {
   }
 }
 
+class _NumberMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _NumberMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF5EEAD4), size: 18),
+          const SizedBox(height: 7),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyNumbersPanel extends StatelessWidget {
   final VoidCallback onBuyNumber;
 
@@ -409,7 +488,7 @@ class _EmptyNumbersPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Buy a global number to receive SMS messages and use it for your international communication flow.',
+            'Buy a global number subscription to receive SMS messages and use it for your international communication flow.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
           ),
