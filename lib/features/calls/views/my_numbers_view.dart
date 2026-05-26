@@ -18,6 +18,7 @@ class _MyNumbersViewState extends State<MyNumbersView> {
   bool isLoading = true;
   String? errorMessage;
   List<MyNumberModel> numbers = [];
+  final Set<String> actionLoadingIds = {};
 
   @override
   void initState() {
@@ -47,6 +48,70 @@ class _MyNumbersViewState extends State<MyNumbersView> {
         errorMessage = error.toString();
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> handleSubscriptionAction(MyNumberModel number) async {
+    final status = (number.billingStatus ?? 'active').toLowerCase();
+    final shouldCancel = status == 'active';
+    final title = shouldCancel ? 'Cancel subscription?' : 'Reactivate subscription?';
+    final message = shouldCancel
+        ? 'Renewal billing will stop for ${number.phoneNumber}. You may lose access if the number is not renewed.'
+        : 'This will charge one month of Credits and reactivate ${number.phoneNumber}.';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(shouldCancel ? 'Cancel' : 'Reactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => actionLoadingIds.add(number.id));
+
+    try {
+      final response = shouldCancel
+          ? await service.cancelNumberSubscription(numberId: number.id)
+          : await service.reactivateNumberSubscription(numberId: number.id);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+
+      await loadNumbers();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => actionLoadingIds.remove(number.id));
+      }
     }
   }
 
@@ -117,7 +182,9 @@ class _MyNumbersViewState extends State<MyNumbersView> {
                       nextRenewalDate: number.nextRenewalAt == null
                           ? 'Not set'
                           : _formatDate(number.nextRenewalAt!),
+                      isActionLoading: actionLoadingIds.contains(number.id),
                       onOpenMessages: () => openMessages(number.phoneNumber),
+                      onSubscriptionAction: () => handleSubscriptionAction(number),
                     ),
                   ),
               ],
@@ -252,24 +319,32 @@ class _MyNumberTile extends StatelessWidget {
   final MyNumberModel number;
   final String createdDate;
   final String nextRenewalDate;
+  final bool isActionLoading;
   final VoidCallback onOpenMessages;
+  final VoidCallback onSubscriptionAction;
 
   const _MyNumberTile({
     required this.number,
     required this.createdDate,
     required this.nextRenewalDate,
+    required this.isActionLoading,
     required this.onOpenMessages,
+    required this.onSubscriptionAction,
   });
 
   @override
   Widget build(BuildContext context) {
     final billingStatus = number.billingStatus ?? 'active';
-    final statusColor = billingStatus.toLowerCase() == 'active'
-        ? const Color(0xFF5EEAD4)
-        : Colors.orange;
+    final lowerBillingStatus = billingStatus.toLowerCase();
+    final isActive = lowerBillingStatus == 'active';
+    final statusColor = isActive ? const Color(0xFF5EEAD4) : Colors.orange;
     final monthlyFee = number.monthlyFeeCredits == null
         ? 'Not set'
         : '${number.monthlyFeeCredits!.toStringAsFixed(0)} Credits/mo';
+    final actionLabel = isActive ? 'Cancel' : 'Reactivate';
+    final actionIcon = isActive
+        ? Icons.cancel_outlined
+        : Icons.play_circle_outline_rounded;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -353,7 +428,7 @@ class _MyNumberTile extends StatelessWidget {
                 child: _NumberMetric(
                   icon: Icons.event_repeat_rounded,
                   label: 'Next renewal',
-                  value: nextRenewalDate,
+                  value: isActive ? nextRenewalDate : 'Stopped',
                 ),
               ),
             ],
@@ -383,11 +458,24 @@ class _MyNumberTile extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.call_rounded, size: 18),
-                  label: const Text('Use Number'),
+                  onPressed: isActionLoading ? null : onSubscriptionAction,
+                  icon: isActionLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(actionIcon, size: 18),
+                  label: Text(isActionLoading ? 'Please wait...' : actionLabel),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF14B8A6),
+                    backgroundColor: isActive
+                        ? const Color(0xFF334155)
+                        : const Color(0xFF14B8A6),
+                    disabledBackgroundColor:
+                        const Color(0xFF14B8A6).withValues(alpha: 0.45),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 13),
