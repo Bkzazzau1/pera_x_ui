@@ -12,4 +12,9 @@ class AppConfig {
     'ENABLE_MOCK_MODE',
     defaultValue: false,
   );
+
+  static const bool enableAdminPanel = bool.fromEnvironment(
+    'ENABLE_ADMIN_PANEL',
+    defaultValue: false,
+  );
 }
