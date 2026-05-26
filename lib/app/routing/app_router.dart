@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin_pricing/admin_pricing_view.dart';
 import '../../features/ai_lab/ai_lab_view.dart';
 import '../../features/bills/bill_payments_view.dart';
 import '../../features/calls/routes/call_routes.dart';
@@ -29,6 +30,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/dashboard',
           builder: (context, state) => const DashboardView(),
+        ),
+        GoRoute(
+          path: '/admin-pricing',
+          builder: (context, state) => const AdminPricingView(),
         ),
         GoRoute(
           path: '/ai-lab',
