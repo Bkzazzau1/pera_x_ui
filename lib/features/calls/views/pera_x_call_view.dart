@@ -333,6 +333,10 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
               context.go('/credits');
             }
 
+            if (value == 'my_numbers') {
+              context.push(CallRoutes.myNumbers);
+            }
+
             if (value == 'buy_number') {
               context.push(CallRoutes.buyInternationalNumber);
             }
@@ -346,6 +350,13 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
               value: 'buy_credit',
               child: Text(
                 'Buy Credits',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'my_numbers',
+              child: Text(
+                'My Numbers',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -409,6 +420,25 @@ class _PeraXCallViewState extends ConsumerState<PeraXCallView> {
                   ),
                   child: const Icon(
                     Icons.add_card_rounded,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              InkWell(
+                onTap: () => context.push(CallRoutes.myNumbers),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  height: 42,
+                  width: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: const Icon(
+                    Icons.dialer_sip_rounded,
                     color: Colors.white,
                     size: 21,
                   ),
