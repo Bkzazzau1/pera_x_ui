@@ -52,11 +52,10 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
   }
 
   void startTimer() {
+    timer?.cancel();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!isOnHold) {
-        setState(() {
-          seconds++;
-        });
+        setState(() => seconds++);
       }
     });
   }
@@ -88,6 +87,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
         durationSeconds: seconds,
         ratePerMinute: widget.ratePerMinute,
         creditBalance: wallet.credits,
+        isInternational: widget.isInternational,
       );
 
       if (!mounted) return;
@@ -99,7 +99,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
           SnackBar(
             content: Text(
               response.message.isEmpty
-                  ? 'Call could not be completed. Please check your Credits.'
+                  ? 'Call could not be completed. Backend rejected the final charge.'
                   : response.message,
             ),
             backgroundColor: const Color(0xFFDC2626),
@@ -123,17 +123,15 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
     } catch (error) {
       if (!mounted) return;
 
-      final fallbackCharge = estimatedCharge;
-      ref.read(walletProvider.notifier).spendCredits(fallbackCharge);
+      setState(() => isEndingCall = false);
+      startTimer();
 
-      context.go(
-        CallRoutes.callReceipt,
-        extra: CallReceiptArgs(
-          phoneNumber: widget.phoneNumber,
-          destination: widget.destination,
-          duration: formattedDuration,
-          charge: fallbackCharge,
-          isInternational: widget.isInternational,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not confirm final call charge from backend. No Credits were deducted. ${error.toString()}',
+          ),
+          backgroundColor: const Color(0xFFDC2626),
         ),
       );
     }
@@ -162,21 +160,13 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
             child: Column(
               children: [
                 _buildTopBar(),
-
                 const SizedBox(height: 28),
-
                 _buildCallerInfo(),
-
                 const SizedBox(height: 24),
-
                 _buildCallStatusCard(),
-
                 const SizedBox(height: 28),
-
                 if (showKeypad) _buildMiniKeypad() else _buildControls(),
-
                 const SizedBox(height: 28),
-
                 _buildEndCallButton(),
               ],
             ),
@@ -206,9 +196,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
             ),
           ),
         ),
-
         const SizedBox(width: 12),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +217,6 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
             ],
           ),
         ),
-
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
@@ -270,15 +257,9 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.person_rounded,
-            color: Colors.white,
-            size: 54,
-          ),
+          child: const Icon(Icons.person_rounded, color: Colors.white, size: 54),
         ),
-
         const SizedBox(height: 20),
-
         Text(
           widget.phoneNumber,
           textAlign: TextAlign.center,
@@ -289,9 +270,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
             letterSpacing: -0.3,
           ),
         ),
-
         const SizedBox(height: 8),
-
         Text(
           widget.destination,
           style: const TextStyle(
@@ -300,9 +279,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
             fontWeight: FontWeight.w600,
           ),
         ),
-
         const SizedBox(height: 12),
-
         Text(
           formattedDuration,
           style: const TextStyle(
@@ -328,18 +305,18 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
       child: Row(
         children: [
           _InfoItem(
-            title: 'Rate',
+            title: 'Backend rate',
             value: '${widget.ratePerMinute.toStringAsFixed(2)} Credits/min',
           ),
           Container(width: 1, height: 36, color: Colors.white10),
           _InfoItem(
-            title: 'Used',
+            title: 'Estimated',
             value: '${estimatedCharge.toStringAsFixed(4)} Credits',
           ),
           Container(width: 1, height: 36, color: Colors.white10),
           _InfoItem(
             title: 'Status',
-            value: isEndingCall ? 'Ending' : isOnHold ? 'On hold' : 'Connected',
+            value: isEndingCall ? 'Confirming' : isOnHold ? 'On hold' : 'Connected',
           ),
         ],
       ),
@@ -356,39 +333,23 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
               icon: isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
               label: isMuted ? 'Muted' : 'Mute',
               active: isMuted,
-              onTap: () {
-                setState(() {
-                  isMuted = !isMuted;
-                });
-              },
+              onTap: () => setState(() => isMuted = !isMuted),
             ),
             _CallControlButton(
-              icon: isSpeakerOn
-                  ? Icons.volume_up_rounded
-                  : Icons.volume_down_rounded,
+              icon: isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_down_rounded,
               label: 'Speaker',
               active: isSpeakerOn,
-              onTap: () {
-                setState(() {
-                  isSpeakerOn = !isSpeakerOn;
-                });
-              },
+              onTap: () => setState(() => isSpeakerOn = !isSpeakerOn),
             ),
             _CallControlButton(
               icon: Icons.dialpad_rounded,
               label: 'Keypad',
               active: showKeypad,
-              onTap: () {
-                setState(() {
-                  showKeypad = true;
-                });
-              },
+              onTap: () => setState(() => showKeypad = true),
             ),
           ],
         ),
-
         const SizedBox(height: 18),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -396,11 +357,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
               icon: Icons.pause_rounded,
               label: isOnHold ? 'Resume' : 'Hold',
               active: isOnHold,
-              onTap: () {
-                setState(() {
-                  isOnHold = !isOnHold;
-                });
-              },
+              onTap: () => setState(() => isOnHold = !isOnHold),
             ),
             _CallControlButton(
               icon: Icons.person_add_alt_1_rounded,
@@ -455,15 +412,9 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
             );
           },
         ),
-
         const SizedBox(height: 14),
-
         TextButton.icon(
-          onPressed: () {
-            setState(() {
-              showKeypad = false;
-            });
-          },
+          onPressed: () => setState(() => showKeypad = false),
           icon: const Icon(Icons.keyboard_arrow_down_rounded),
           label: const Text('Hide keypad'),
           style: TextButton.styleFrom(foregroundColor: const Color(0xFF5EEAD4)),
@@ -499,11 +450,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
                   color: Colors.white,
                 ),
               )
-            : const Icon(
-                Icons.call_end_rounded,
-                color: Colors.white,
-                size: 34,
-              ),
+            : const Icon(Icons.call_end_rounded, color: Colors.white, size: 34),
       ),
     );
   }
@@ -523,7 +470,7 @@ class _InfoItem extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white38,
+              color: Colors.white54,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -532,6 +479,8 @@ class _InfoItem extends StatelessWidget {
           Text(
             value,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -559,8 +508,6 @@ class _CallControlButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = active ? const Color(0xFF5EEAD4) : Colors.white;
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
@@ -576,19 +523,23 @@ class _CallControlButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
                 color: active
-                    ? const Color(0xFF14B8A6).withValues(alpha: 0.55)
+                    ? const Color(0xFF14B8A6).withValues(alpha: 0.65)
                     : Colors.white10,
               ),
             ),
-            child: Icon(icon, color: activeColor, size: 25),
+            child: Icon(
+              icon,
+              color: active ? const Color(0xFF5EEAD4) : Colors.white70,
+              size: 25,
+            ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 8),
           Text(
             label,
-            style: TextStyle(
-              color: active ? const Color(0xFF5EEAD4) : Colors.white54,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
