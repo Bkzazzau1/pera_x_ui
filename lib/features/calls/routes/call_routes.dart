@@ -5,6 +5,7 @@ import '../views/buy_international_number_view.dart';
 import '../views/call_history_view.dart';
 import '../views/call_receipt_view.dart';
 import '../views/call_settings_view.dart';
+import '../views/my_numbers_view.dart';
 import '../views/pera_x_call_view.dart';
 import '../views/sms_inbox_view.dart';
 
@@ -18,6 +19,7 @@ class CallRoutes {
   static const String buyCredits = '/credits';
   static const String buyInternationalNumber =
       '/pera-x/calls/buy-international-number';
+  static const String myNumbers = '/pera-x/calls/my-numbers';
   static const String smsInbox = '/pera-x/calls/messages';
   static const String settings = '/pera-x/calls/settings';
 
@@ -25,6 +27,7 @@ class CallRoutes {
     callHome: (_) => const PeraXCallView(),
     callHistory: (_) => const CallHistoryView(),
     buyInternationalNumber: (_) => const BuyInternationalNumberView(),
+    myNumbers: (_) => const MyNumbersView(),
     settings: (_) => const CallSettingsView(),
   };
 
