@@ -4,6 +4,10 @@ class MyNumberModel {
   final String? country;
   final String? plan;
   final String status;
+  final double? setupFeeCredits;
+  final double? monthlyFeeCredits;
+  final DateTime? nextRenewalAt;
+  final String? billingStatus;
   final DateTime createdAt;
 
   const MyNumberModel({
@@ -13,6 +17,10 @@ class MyNumberModel {
     required this.createdAt,
     this.country,
     this.plan,
+    this.setupFeeCredits,
+    this.monthlyFeeCredits,
+    this.nextRenewalAt,
+    this.billingStatus,
   });
 
   factory MyNumberModel.fromJson(Map<String, dynamic> json) {
@@ -22,6 +30,11 @@ class MyNumberModel {
       country: json['country']?.toString(),
       plan: json['plan']?.toString(),
       status: json['status']?.toString() ?? 'reserved',
+      setupFeeCredits: (json['setupFeeCredits'] as num?)?.toDouble(),
+      monthlyFeeCredits: (json['monthlyFeeCredits'] as num?)?.toDouble(),
+      nextRenewalAt:
+          DateTime.tryParse(json['nextRenewalAt']?.toString() ?? ''),
+      billingStatus: json['billingStatus']?.toString(),
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
     );
