@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pera_x_ui/shared/widgets/glass_card.dart';
 
 import '../../app/theme.dart';
+import '../../core/config/app_config.dart';
 
 class MainShell extends StatefulWidget {
   final Widget child;
@@ -34,54 +35,27 @@ class _MainShellState extends State<MainShell>
     super.dispose();
   }
 
+  List<_NavItem> get _visibleNavItems {
+    return AppConfig.enableAdminPanel ? _adminNavItems : _publicNavItems;
+  }
+
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/ai-lab')) return 1;
-    if (location.startsWith('/pera-x/calls')) return 2;
-    if (location.startsWith('/bills')) return 3;
-    if (location.startsWith('/wallet')) return 4;
-    if (location.startsWith('/credits')) return 5;
-    if (location.startsWith('/market')) return 6;
-    if (location.startsWith('/checkout')) return 7;
-    if (location.startsWith('/admin-pricing')) return 8;
-    return 0;
+    final navItems = _visibleNavItems;
+    final index = navItems.indexWhere((item) => location.startsWith(item.path));
+    return index == -1 ? 0 : index;
   }
 
   void _goToTab(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        context.go('/dashboard');
-        break;
-      case 1:
-        context.go('/ai-lab');
-        break;
-      case 2:
-        context.go('/pera-x/calls');
-        break;
-      case 3:
-        context.go('/bills');
-        break;
-      case 4:
-        context.go('/wallet');
-        break;
-      case 5:
-        context.go('/credits');
-        break;
-      case 6:
-        context.go('/market');
-        break;
-      case 7:
-        context.go('/checkout');
-        break;
-      case 8:
-        context.go('/admin-pricing');
-        break;
-    }
+    final navItems = _visibleNavItems;
+    if (index < 0 || index >= navItems.length) return;
+    context.go(navItems[index].path);
   }
 
   @override
   Widget build(BuildContext context) {
     final currentIndex = _currentIndex(context);
+    final navItems = _visibleNavItems;
 
     return Scaffold(
       backgroundColor: PeraXColors.darkBlue,
@@ -118,6 +92,7 @@ class _MainShellState extends State<MainShell>
                     return Row(
                       children: [
                         _DesktopSidebar(
+                          navItems: navItems,
                           currentIndex: currentIndex,
                           onSelected: (index) => _goToTab(context, index),
                         ),
@@ -131,6 +106,7 @@ class _MainShellState extends State<MainShell>
                       Align(
                         alignment: Alignment.bottomCenter,
                         child: _MobileBottomNav(
+                          navItems: navItems,
                           currentIndex: currentIndex,
                           onSelected: (index) => _goToTab(context, index),
                         ),
@@ -183,10 +159,15 @@ class NeuralBackgroundPainter extends CustomPainter {
 }
 
 class _DesktopSidebar extends StatelessWidget {
+  final List<_NavItem> navItems;
   final int currentIndex;
   final ValueChanged<int> onSelected;
 
-  const _DesktopSidebar({required this.currentIndex, required this.onSelected});
+  const _DesktopSidebar({
+    required this.navItems,
+    required this.currentIndex,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -208,8 +189,8 @@ class _DesktopSidebar extends StatelessWidget {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
-                children: List.generate(_navItems.length, (index) {
-                  final item = _navItems[index];
+                children: List.generate(navItems.length, (index) {
+                  final item = navItems[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _SidebarItem(
@@ -341,22 +322,15 @@ class _NetworkStatusWidget extends StatelessWidget {
     return GlassCard(
       padding: const EdgeInsets.all(20),
       radius: 28,
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: PeraXColors.cyan,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
+              _StatusDot(),
+              SizedBox(width: 10),
+              Text(
                 'Pricing Synced',
                 style: TextStyle(
                   color: PeraXColors.cyan,
@@ -366,12 +340,12 @@ class _NetworkStatusWidget extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
+          SizedBox(height: 12),
+          Text(
             'Backend Source of Truth',
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
-          const Text(
+          Text(
             'Credits Engine',
             style: TextStyle(
               color: Colors.white,
@@ -385,11 +359,32 @@ class _NetworkStatusWidget extends StatelessWidget {
   }
 }
 
+class _StatusDot extends StatelessWidget {
+  const _StatusDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: const BoxDecoration(
+        color: PeraXColors.cyan,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
 class _MobileBottomNav extends StatelessWidget {
+  final List<_NavItem> navItems;
   final int currentIndex;
   final ValueChanged<int> onSelected;
 
-  const _MobileBottomNav({required this.currentIndex, required this.onSelected});
+  const _MobileBottomNav({
+    required this.navItems,
+    required this.currentIndex,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +416,7 @@ class _MobileBottomNav extends StatelessWidget {
               backgroundColor: Colors.transparent,
               elevation: 0,
               indicatorColor: PeraXColors.cyan.withValues(alpha: 0.2),
-              destinations: _navItems
+              destinations: navItems
                   .map(
                     (item) => NavigationDestination(
                       icon: Icon(item.outlinedIcon, color: Colors.white38),
@@ -440,58 +435,73 @@ class _MobileBottomNav extends StatelessWidget {
 
 class _NavItem {
   final String label;
+  final String path;
   final IconData icon, outlinedIcon;
 
   const _NavItem({
     required this.label,
+    required this.path,
     required this.icon,
     required this.outlinedIcon,
   });
 }
 
-const _navItems = [
+const _publicNavItems = [
   _NavItem(
     label: 'Home',
+    path: '/dashboard',
     icon: Icons.dashboard_rounded,
     outlinedIcon: Icons.dashboard_outlined,
   ),
   _NavItem(
     label: 'AI Lab',
+    path: '/ai-lab',
     icon: Icons.auto_awesome_rounded,
     outlinedIcon: Icons.auto_awesome_outlined,
   ),
   _NavItem(
     label: 'Calls',
+    path: '/pera-x/calls',
     icon: Icons.call_rounded,
     outlinedIcon: Icons.call_outlined,
   ),
   _NavItem(
     label: 'Bills',
+    path: '/bills',
     icon: Icons.receipt_long_rounded,
     outlinedIcon: Icons.receipt_long_outlined,
   ),
   _NavItem(
     label: 'Wallet',
+    path: '/wallet',
     icon: Icons.account_balance_wallet_rounded,
     outlinedIcon: Icons.account_balance_wallet_outlined,
   ),
   _NavItem(
     label: 'Buy Credits',
+    path: '/credits',
     icon: Icons.add_card_rounded,
     outlinedIcon: Icons.add_card_outlined,
   ),
   _NavItem(
     label: 'Market',
+    path: '/market',
     icon: Icons.shopping_bag_rounded,
     outlinedIcon: Icons.shopping_bag_outlined,
   ),
   _NavItem(
     label: 'Checkout',
+    path: '/checkout',
     icon: Icons.payments_rounded,
     outlinedIcon: Icons.payments_outlined,
   ),
+];
+
+const _adminNavItems = [
+  ..._publicNavItems,
   _NavItem(
     label: 'Admin',
+    path: '/admin-pricing',
     icon: Icons.admin_panel_settings_rounded,
     outlinedIcon: Icons.admin_panel_settings_outlined,
   ),
