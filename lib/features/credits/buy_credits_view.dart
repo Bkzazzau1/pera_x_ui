@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/state/service_providers.dart';
 import '../../app/state/transaction_provider.dart';
 import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../pricing/data/pricing_service.dart';
 import '../wallet/state/wallet_provider.dart';
 import 'data/credit_service.dart';
 
@@ -33,7 +35,7 @@ enum CreditFundingMethod {
       case CreditFundingMethod.card:
         return 'Buy Credits with debit or credit card.';
       case CreditFundingMethod.stablecoin:
-        return 'Pay with USDT or USDC and receive Credits.';
+        return 'Pay with stablecoin and receive Credits.';
       case CreditFundingMethod.virtualAccount:
         return 'Available in eligible countries only.';
     }
@@ -64,6 +66,18 @@ enum CreditFundingMethod {
         return CreditFundingMethodDto.virtualAccount;
     }
   }
+
+  String get assetCode {
+    switch (this) {
+      case CreditFundingMethod.pex:
+        return 'PEX';
+      case CreditFundingMethod.stablecoin:
+        return 'USDT';
+      case CreditFundingMethod.card:
+      case CreditFundingMethod.virtualAccount:
+        return 'FIAT_USD';
+    }
+  }
 }
 
 class BuyCreditsView extends ConsumerStatefulWidget {
@@ -78,6 +92,7 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
   final CreditService _creditService = CreditService();
   CreditFundingMethod selectedMethod = CreditFundingMethod.pex;
   bool isProcessing = false;
+  BuyCreditsResultDto? lastQuote;
 
   @override
   void dispose() {
@@ -87,18 +102,40 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
 
   double get creditAmount => double.tryParse(_amountController.text.trim()) ?? 0;
 
-  bool _canBuy(WalletState wallet) {
+  CreditExchangeRateModel? _rateFor(
+    List<CreditExchangeRateModel>? rates,
+    CreditFundingMethod method,
+  ) {
+    if (rates == null) return null;
+    for (final rate in rates) {
+      if (rate.assetCode == method.assetCode) return rate;
+    }
+    return null;
+  }
+
+  double _creditsPerUnit(List<CreditExchangeRateModel>? rates) {
+    return _rateFor(rates, selectedMethod)?.creditsPerUnit ?? 100;
+  }
+
+  double _assetRequired(List<CreditExchangeRateModel>? rates) {
+    final creditsPerUnit = _creditsPerUnit(rates);
+    if (creditAmount <= 0 || creditsPerUnit <= 0) return 0;
+    return creditAmount / creditsPerUnit;
+  }
+
+  bool _canBuy(WalletState wallet, List<CreditExchangeRateModel>? rates) {
     if (isProcessing || creditAmount <= 0) return false;
     if (selectedMethod == CreditFundingMethod.pex) {
-      return wallet.pex >= creditAmount;
+      return wallet.pex >= _assetRequired(rates);
     }
     return true;
   }
 
   Future<void> _buyCredits() async {
     final wallet = ref.read(walletProvider);
+    final rates = ref.read(creditExchangeRatesProvider).valueOrNull;
 
-    if (!_canBuy(wallet)) {
+    if (!_canBuy(wallet, rates)) {
       _showSnack(
         selectedMethod == CreditFundingMethod.pex
             ? 'Insufficient PEX to buy this amount of Credits.'
@@ -125,7 +162,8 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
       }
 
       if (selectedMethod == CreditFundingMethod.pex) {
-        ref.read(walletProvider.notifier).buyCreditsWithPex(response.creditAmount);
+        ref.read(walletProvider.notifier).deductPex(response.pexRequired);
+        ref.read(walletProvider.notifier).addCredits(response.creditAmount);
       } else {
         ref.read(walletProvider.notifier).addCredits(response.creditAmount);
       }
@@ -140,7 +178,10 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
             ? '${response.creditAmount.toStringAsFixed(0)} Credits added successfully.'
             : response.message,
       );
-      setState(() => isProcessing = false);
+      setState(() {
+        lastQuote = response;
+        isProcessing = false;
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => isProcessing = false);
@@ -157,7 +198,9 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
   @override
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
-    final canBuy = _canBuy(wallet);
+    final exchangeRatesAsync = ref.watch(creditExchangeRatesProvider);
+    final exchangeRates = exchangeRatesAsync.valueOrNull;
+    final canBuy = _canBuy(wallet, exchangeRates);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -168,22 +211,33 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
           children: [
             const _CreditsHeader(),
             const SizedBox(height: 20),
+            if (exchangeRatesAsync.isLoading) const _RateLoadingBanner(),
+            if (exchangeRatesAsync.hasError) const _RateFallbackBanner(),
+            if (exchangeRatesAsync.isLoading || exchangeRatesAsync.hasError)
+              const SizedBox(height: 16),
             _BalanceOverview(wallet: wallet),
             const SizedBox(height: 18),
             _AmountCard(
               controller: _amountController,
-              onChanged: () => setState(() {}),
+              onChanged: () => setState(() => lastQuote = null),
             ),
             const SizedBox(height: 18),
             _FundingMethods(
               selectedMethod: selectedMethod,
-              onSelected: (method) => setState(() => selectedMethod = method),
+              exchangeRates: exchangeRates,
+              onSelected: (method) => setState(() {
+                selectedMethod = method;
+                lastQuote = null;
+              }),
             ),
             const SizedBox(height: 18),
             _CreditSummary(
               method: selectedMethod,
               creditAmount: creditAmount,
               wallet: wallet,
+              rate: _rateFor(exchangeRates, selectedMethod),
+              assetRequired: _assetRequired(exchangeRates),
+              lastQuote: lastQuote,
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
@@ -214,6 +268,58 @@ class _BuyCreditsViewState extends ConsumerState<BuyCreditsView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RateLoadingBanner extends StatelessWidget {
+  const _RateLoadingBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const GlassCard(
+      radius: 18,
+      padding: EdgeInsets.all(14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: PeraXColors.cyan),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Loading backend Credit exchange rates...',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RateFallbackBanner extends StatelessWidget {
+  const _RateFallbackBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const GlassCard(
+      radius: 18,
+      padding: EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: Colors.orange, size: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Displaying fallback exchange estimates. Backend still confirms the final conversion.',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -269,7 +375,7 @@ class _BalanceOverview extends StatelessWidget {
           Expanded(
             child: _BalanceMetric(
               label: 'PEX Balance',
-              value: '${wallet.pex.toStringAsFixed(0)} PEX',
+              value: '${wallet.pex.toStringAsFixed(2)} PEX',
               icon: Icons.token_outlined,
             ),
           ),
@@ -361,18 +467,32 @@ class _AmountCard extends StatelessWidget {
 
 class _FundingMethods extends StatelessWidget {
   final CreditFundingMethod selectedMethod;
+  final List<CreditExchangeRateModel>? exchangeRates;
   final ValueChanged<CreditFundingMethod> onSelected;
 
   const _FundingMethods({
     required this.selectedMethod,
+    required this.exchangeRates,
     required this.onSelected,
   });
+
+  CreditExchangeRateModel? _rateFor(CreditFundingMethod method) {
+    if (exchangeRates == null) return null;
+    for (final rate in exchangeRates!) {
+      if (rate.assetCode == method.assetCode) return rate;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: CreditFundingMethod.values.map((method) {
         final isActive = method == selectedMethod;
+        final rate = _rateFor(method);
+        final rateText = rate == null
+            ? 'Backend rate pending'
+            : '${rate.creditsPerUnit.toStringAsFixed(0)} Credits / ${rate.unitLabel}';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -418,6 +538,15 @@ class _FundingMethods extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rateText,
+                          style: const TextStyle(
+                            color: PeraXColors.cyan,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -437,19 +566,36 @@ class _CreditSummary extends StatelessWidget {
   final CreditFundingMethod method;
   final double creditAmount;
   final WalletState wallet;
+  final CreditExchangeRateModel? rate;
+  final double assetRequired;
+  final BuyCreditsResultDto? lastQuote;
 
   const _CreditSummary({
     required this.method,
     required this.creditAmount,
     required this.wallet,
+    required this.rate,
+    required this.assetRequired,
+    required this.lastQuote,
   });
 
   @override
   Widget build(BuildContext context) {
-    final afterPex = method == CreditFundingMethod.pex
-        ? wallet.pex - creditAmount
+    final finalAssetRequired = lastQuote?.assetRequired ?? assetRequired;
+    final finalCreditAmount = lastQuote?.creditAmount ?? creditAmount;
+    final finalCreditsPerUnit = lastQuote?.creditsPerUnit ?? rate?.creditsPerUnit ?? 100;
+    final finalAssetCode = lastQuote?.assetCode.isNotEmpty == true
+        ? lastQuote!.assetCode
+        : method.assetCode;
+    final pexAfter = method == CreditFundingMethod.pex
+        ? wallet.pex - finalAssetRequired
         : wallet.pex;
-    final afterCredits = wallet.credits + (creditAmount > 0 ? creditAmount : 0);
+    final afterCredits = wallet.credits + (finalCreditAmount > 0 ? finalCreditAmount : 0);
+    final assetLabel = method == CreditFundingMethod.pex
+        ? 'PEX Required'
+        : method == CreditFundingMethod.stablecoin
+            ? 'Stablecoin Required'
+            : 'Fiat Equivalent';
 
     return GlassCard(
       radius: 28,
@@ -458,7 +604,7 @@ class _CreditSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Credit Purchase Summary',
+            'Backend Exchange Summary',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -468,23 +614,36 @@ class _CreditSummary extends StatelessWidget {
           const SizedBox(height: 14),
           _SummaryRow(label: 'Funding Method', value: method.title),
           _SummaryRow(
+            label: 'Backend Rate',
+            value: '${finalCreditsPerUnit.toStringAsFixed(0)} Credits / ${rate?.unitLabel ?? '1 $finalAssetCode'}',
+          ),
+          _SummaryRow(
             label: 'Credits to Receive',
-            value: '${creditAmount.toStringAsFixed(0)} Credits',
+            value: '${finalCreditAmount.toStringAsFixed(0)} Credits',
+          ),
+          _SummaryRow(
+            label: assetLabel,
+            value: '${finalAssetRequired.toStringAsFixed(4)} $finalAssetCode',
+            isWarning: method == CreditFundingMethod.pex && pexAfter < 0,
           ),
           _SummaryRow(
             label: 'PEX After Purchase',
             value: method == CreditFundingMethod.pex
-                ? '${afterPex.toStringAsFixed(0)} PEX'
+                ? '${pexAfter.toStringAsFixed(4)} PEX'
                 : 'No PEX deduction',
-            isWarning: afterPex < 0,
+            isWarning: pexAfter < 0,
           ),
           _SummaryRow(
             label: 'Credit Balance After',
             value: '${afterCredits.toStringAsFixed(0)} Credits',
           ),
+          if (lastQuote != null) ...[
+            const Divider(color: Colors.white10, height: 22),
+            _SummaryRow(label: 'Backend Status', value: lastQuote!.status),
+          ],
           const SizedBox(height: 10),
           const Text(
-            'Trading company settlement, provider payment, buyback, burn, liquidity support, and operating margin will be handled by backend policy.',
+            'Rates are controlled by backend/admin settings. The frontend only displays estimates; backend confirms the final exchange before crediting.',
             style: TextStyle(color: Colors.white54, fontSize: 11, height: 1.45),
           ),
         ],
@@ -519,9 +678,9 @@ class _SummaryRow extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: isWarning ? Colors.orange : Colors.white,
-              fontWeight: FontWeight.w900,
+              color: isWarning ? Colors.orangeAccent : Colors.white,
               fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
