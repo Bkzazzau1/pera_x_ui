@@ -7,17 +7,18 @@ import '../data/ai_service.dart';
 class AiAccessStatusCard extends StatelessWidget {
   final double creditBalance;
   final AiDocumentTool selectedTool;
+  final double creditCost;
 
   const AiAccessStatusCard({
     super.key,
     required this.creditBalance,
     required this.selectedTool,
+    required this.creditCost,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cost = selectedTool.creditCost;
-    final remaining = creditBalance - cost;
+    final remaining = creditBalance - creditCost;
     final hasAccess = remaining >= 0;
 
     return GlassCard(
@@ -66,7 +67,7 @@ class AiAccessStatusCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       hasAccess
-                          ? 'Backend will confirm credit access before processing.'
+                          ? 'Backend will confirm credit access before processing ${selectedTool.label}.'
                           : 'Buy Credits before running this AI tool.',
                       style: const TextStyle(
                         color: Colors.white54,
@@ -92,7 +93,7 @@ class AiAccessStatusCard extends StatelessWidget {
               Expanded(
                 child: _AccessMetric(
                   label: 'Tool Cost',
-                  value: '${cost.toStringAsFixed(0)} Credits',
+                  value: '${creditCost.toStringAsFixed(0)} Credits',
                 ),
               ),
               const SizedBox(width: 10),
