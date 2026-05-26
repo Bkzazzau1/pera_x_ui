@@ -3,6 +3,7 @@ import '../../../core/config/app_config.dart';
 import '../models/call_destination_model.dart';
 import '../models/international_number_model.dart';
 import '../models/recent_call_model.dart';
+import '../models/sms_message_model.dart';
 import 'call_static_data.dart';
 
 class StartCallResultDto {
@@ -156,6 +157,35 @@ class CallService {
   Future<List<InternationalNumberModel>> getInternationalNumbers() async {
     await Future.delayed(const Duration(milliseconds: 250));
     return CallStaticData.internationalNumbers;
+  }
+
+  Future<List<SmsMessageModel>> getSmsInbox({
+    required String phoneNumber,
+  }) async {
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 450));
+      return [
+        SmsMessageModel(
+          id: 'demo_sms_1',
+          phoneNumber: phoneNumber,
+          sender: '+447700900123',
+          body: 'Welcome to your Pera-X global number inbox.',
+          receivedAt: DateTime.now().subtract(const Duration(minutes: 8)),
+        ),
+      ];
+    }
+
+    final encodedNumber = Uri.encodeQueryComponent(phoneNumber);
+    final response = await _apiClient.get(
+      '/telecom/sms/inbox?phoneNumber=$encodedNumber',
+    );
+
+    final payload = response as Map<String, dynamic>;
+    final messages = payload['messages'] as List? ?? const [];
+
+    return messages
+        .map((item) => SmsMessageModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<bool> createCreditPurchaseRequest({
