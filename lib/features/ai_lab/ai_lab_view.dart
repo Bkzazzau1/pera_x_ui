@@ -7,6 +7,7 @@ import '../../app/state/service_providers.dart';
 import '../../app/state/transaction_provider.dart';
 import '../../app/theme.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../pricing/data/pricing_service.dart';
 import '../wallet/state/wallet_provider.dart';
 import 'data/ai_service.dart';
 import 'utils/ai_score_color.dart';
@@ -38,6 +39,14 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
     super.dispose();
   }
 
+  double _adminCostFor(
+    List<UtilityPriceModel>? pricing,
+    AiDocumentTool tool,
+  ) {
+    return pricing?.costFor(tool.apiValue, tool.fallbackCreditCost) ??
+        tool.fallbackCreditCost;
+  }
+
   Future<void> _pickDocument() async {
     final picked = await FilePicker.platform.pickFiles(
       allowMultiple: false,
@@ -56,7 +65,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
     });
   }
 
-  Future<void> _runTool() async {
+  Future<void> _runTool(double displayedCreditCost) async {
     final file = selectedFile;
     final bytes = selectedBytes;
     final wallet = ref.read(walletProvider);
@@ -66,16 +75,6 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
     if (isProcessing || (!hasDocumentInput && !hasTextInput)) return;
 
-    if (wallet.credits < selectedTool.creditCost) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Insufficient Credits for this AI document service.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
     setState(() {
       isProcessing = true;
       result = null;
@@ -83,6 +82,23 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
     try {
       final aiService = ref.read(aiServiceProvider);
+      final access = await aiService.checkAccess(
+        tool: selectedTool,
+        creditBalance: wallet.credits,
+      );
+
+      if (!access.allowed) {
+        if (!mounted) return;
+        setState(() => isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(access.message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       final toolInstructions = selectedTool == AiDocumentTool.humanizer
           ? 'Humanizer tone: $selectedTone${notes.isEmpty ? '' : '\n$notes'}'
           : notes;
@@ -98,23 +114,34 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
 
       if (!mounted) return;
 
-      ref.read(walletProvider.notifier).spendCredits(response.creditCost);
+      final finalCreditCost = response.creditCost > 0
+          ? response.creditCost
+          : access.creditCost;
+
+      ref.read(walletProvider.notifier).spendCredits(finalCreditCost);
       ref
           .read(transactionProvider.notifier)
           .addAiPrompt(
             model: selectedTool.label,
-            creditCost: response.creditCost,
+            creditCost: finalCreditCost,
           );
 
       setState(() {
-        result = response;
+        result = AiDocumentResultDto(
+          title: response.title,
+          summary: response.summary,
+          score: response.score,
+          creditCost: finalCreditCost,
+          findings: response.findings,
+          output: response.output,
+        );
         taskHistory.insert(
           0,
           AiTaskHistoryEntry(
             tool: selectedTool,
             title: response.title,
             score: response.score,
-            creditCost: response.creditCost,
+            creditCost: finalCreditCost,
             createdAt: DateTime.now(),
           ),
         );
@@ -139,6 +166,9 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
   @override
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
+    final utilityPricing = ref.watch(utilityPricingProvider);
+    final pricing = utilityPricing.valueOrNull;
+    final selectedCreditCost = _adminCostFor(pricing, selectedTool);
     final hasInput =
         selectedFile != null || _notesController.text.trim().isNotEmpty;
 
@@ -151,8 +181,13 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
           children: [
             _AiLabHeader(pexBalance: wallet.pex, creditBalance: wallet.credits),
             const SizedBox(height: 20),
+            if (utilityPricing.isLoading) const _PricingLoadingBanner(),
+            if (utilityPricing.hasError) const _PricingFallbackBanner(),
+            if (utilityPricing.isLoading || utilityPricing.hasError)
+              const SizedBox(height: 16),
             _ToolSelector(
               selectedTool: selectedTool,
+              pricing: pricing,
               onSelected: (tool) => setState(() {
                 selectedTool = tool;
                 result = null;
@@ -162,9 +197,14 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
             AiAccessStatusCard(
               creditBalance: wallet.credits,
               selectedTool: selectedTool,
+              creditCost: selectedCreditCost,
             ),
             const SizedBox(height: 16),
-            AiToolFlowCard(tool: selectedTool, walletBalance: wallet.credits),
+            AiToolFlowCard(
+              tool: selectedTool,
+              walletBalance: wallet.credits,
+              creditCost: selectedCreditCost,
+            ),
             if (selectedTool == AiDocumentTool.humanizer) ...[
               const SizedBox(height: 16),
               _HumanizerToneSelector(
@@ -195,9 +235,10 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
             const SizedBox(height: 16),
             _RunPanel(
               tool: selectedTool,
+              creditCost: selectedCreditCost,
               hasInput: hasInput,
               isProcessing: isProcessing,
-              onRun: _runTool,
+              onRun: () => _runTool(selectedCreditCost),
             ),
             const SizedBox(height: 20),
             if (isProcessing) const _ProcessingState(),
@@ -209,6 +250,58 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PricingLoadingBanner extends StatelessWidget {
+  const _PricingLoadingBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const GlassCard(
+      radius: 18,
+      padding: EdgeInsets.all(14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: PeraXColors.cyan),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Loading admin-set AI prices...',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PricingFallbackBanner extends StatelessWidget {
+  const _PricingFallbackBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const GlassCard(
+      radius: 18,
+      padding: EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: Colors.orange, size: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Displaying fallback prices. Backend will still confirm the final Credit charge.',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -299,15 +392,26 @@ class _AiLabHeader extends StatelessWidget {
 
 class _ToolSelector extends StatelessWidget {
   final AiDocumentTool selectedTool;
+  final List<UtilityPriceModel>? pricing;
   final ValueChanged<AiDocumentTool> onSelected;
 
-  const _ToolSelector({required this.selectedTool, required this.onSelected});
+  const _ToolSelector({
+    required this.selectedTool,
+    required this.pricing,
+    required this.onSelected,
+  });
+
+  double _costFor(AiDocumentTool tool) {
+    return pricing?.costFor(tool.apiValue, tool.fallbackCreditCost) ??
+        tool.fallbackCreditCost;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: AiDocumentTool.values.map((tool) {
         final isActive = selectedTool == tool;
+        final creditCost = _costFor(tool);
         final icon = switch (tool) {
           AiDocumentTool.detector => Icons.radar_rounded,
           AiDocumentTool.plagiarism => Icons.fact_check_rounded,
@@ -368,7 +472,7 @@ class _ToolSelector extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${tool.creditCost.toInt()} Credits',
+                    '${creditCost.toStringAsFixed(creditCost % 1 == 0 ? 0 : 2)} Credits',
                     style: const TextStyle(
                       color: PeraXColors.cyan,
                       fontWeight: FontWeight.w900,
@@ -518,361 +622,3 @@ class _DocumentUploadCard extends StatelessWidget {
                   selected?.name ?? 'Upload document optional',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  selected == null
-                      ? 'Use PDF/DOC/TXT or paste text below'
-                      : '${(selected.size / 1024).toStringAsFixed(1)} KB ready',
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: selected == null ? 'Upload' : 'Remove',
-            onPressed: selected == null ? onPickDocument : onClear,
-            icon: Icon(
-              selected == null ? Icons.add_rounded : Icons.close_rounded,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OptionalNotes extends StatelessWidget {
-  final TextEditingController controller;
-  final AiDocumentTool selectedTool;
-  final String selectedTone;
-  final VoidCallback onChanged;
-
-  const _OptionalNotes({
-    required this.controller,
-    required this.selectedTool,
-    required this.selectedTone,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hintText = selectedTool == AiDocumentTool.humanizer
-        ? 'Paste text or add instructions for $selectedTone tone...'
-        : 'Paste text here or add optional instructions...';
-
-    return TextField(
-      controller: controller,
-      minLines: 5,
-      maxLines: 8,
-      onChanged: (_) => onChanged(),
-      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white38),
-        filled: true,
-        fillColor: PeraXColors.darkBlue.withValues(alpha: 0.45),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(22),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-}
-
-class _RunPanel extends StatelessWidget {
-  final AiDocumentTool tool;
-  final bool hasInput;
-  final bool isProcessing;
-  final VoidCallback onRun;
-
-  const _RunPanel({
-    required this.tool,
-    required this.hasInput,
-    required this.isProcessing,
-    required this.onRun,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: hasInput && !isProcessing ? onRun : null,
-      icon: Icon(
-        isProcessing ? Icons.hourglass_bottom : Icons.play_arrow_rounded,
-      ),
-      label: Text(
-        isProcessing
-            ? 'PROCESSING INPUT'
-            : 'RUN ${tool.label.toUpperCase()} // ${tool.creditCost.toInt()} CREDITS',
-      ),
-      style: FilledButton.styleFrom(
-        backgroundColor: PeraXColors.cyan,
-        foregroundColor: PeraXColors.darkBlue,
-        disabledBackgroundColor: Colors.white10,
-        disabledForegroundColor: Colors.white30,
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        textStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      ),
-    );
-  }
-}
-
-class _ProcessingState extends StatelessWidget {
-  const _ProcessingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const GlassCard(
-      radius: 22,
-      padding: EdgeInsets.all(18),
-      child: Row(
-        children: [
-          SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              'Backend is confirming credit access and processing the AI task.',
-              style: TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ResultPanel extends StatelessWidget {
-  final AiDocumentResultDto result;
-
-  const _ResultPanel({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final reportText = _formatReport(result);
-    final scoreColor = getAiScoreColor(result.score);
-    final scoreLabel = _scoreLabel(result);
-
-    return GlassCard(
-      radius: 26,
-      padding: const EdgeInsets.all(20),
-      backgroundColor: const Color(0xFF0A1931).withValues(alpha: 0.88),
-      borderColor: const Color(0x3300E5FF),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  result.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                scoreLabel,
-                style: TextStyle(
-                  color: scoreColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            result.summary,
-            style: const TextStyle(color: Color(0xFFB8C7E0), height: 1.45),
-          ),
-          const SizedBox(height: 16),
-          ...result.findings.map(
-            (finding) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: PeraXColors.cyan,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      finding,
-                      style: const TextStyle(
-                        color: Color(0xFFB8C7E0),
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF071426),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: scoreColor.withValues(alpha: 0.52)),
-            ),
-            child: Text(
-              result.output,
-              style: const TextStyle(color: Colors.white, height: 1.45),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _ResultActionButton(
-                icon: Icons.copy_rounded,
-                label: 'Copy Result',
-                onTap: () async {
-                  await Clipboard.setData(ClipboardData(text: result.output));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('AI output copied.'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-              ),
-              _ResultActionButton(
-                icon: Icons.article_outlined,
-                label: 'Copy Report',
-                onTap: () async {
-                  await Clipboard.setData(ClipboardData(text: reportText));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Full AI report copied.'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-              ),
-              _ResultActionButton(
-                icon: Icons.download_rounded,
-                label: 'Download Later',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Download export will be connected with backend storage.',
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _scoreLabel(AiDocumentResultDto result) {
-    final scoreText = '${result.score.toStringAsFixed(0)}%';
-    if (result.title.toLowerCase().contains('detection')) {
-      return '$scoreText AI-Likely';
-    }
-    return scoreText;
-  }
-
-  String _formatReport(AiDocumentResultDto result) {
-    final findingsText = result.findings
-        .map((finding) => '- $finding')
-        .join('\n');
-
-    return '''${result.title}
-
-Score: ${result.score.toStringAsFixed(0)}%
-Credit Cost: ${result.creditCost.toStringAsFixed(0)} Credits
-
-Summary:
-${result.summary}
-
-Findings:
-$findingsText
-
-Output:
-${result.output}
-''';
-  }
-}
-
-class _ResultActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ResultActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: PeraXColors.cyan.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: PeraXColors.cyan.withValues(alpha: 0.24)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: PeraXColors.cyan, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: PeraXColors.cyan,
-                fontWeight: FontWeight.w900,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
