@@ -118,13 +118,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
     _persist();
   }
 
-  /// Temporary frontend demo rate:
-  /// 1 SOL = 2,000 PEX.
-  /// Later this will come from Meteora / backend quote API.
   double get solToPexRate => 2000;
-
-  /// Internal platform credits are separate from PEX.
-  /// Users can buy credits with PEX, fiat, stablecoin, card, or eligible-country VA.
   double get pexToCreditRate => 1;
 
   void spendCredits(double amount) {
@@ -138,6 +132,19 @@ class WalletNotifier extends StateNotifier<WalletState> {
     if (amount <= 0) return;
 
     _update(state.copyWith(credits: state.credits + amount));
+  }
+
+  void deductPex(double amount) {
+    if (amount <= 0) return;
+
+    final safeAmount = amount > state.pex ? state.pex : amount;
+    final newPex = state.pex - safeAmount;
+    _update(
+      state.copyWith(
+        pex: newPex,
+        pexUsdValue: newPex * state.pexUsdRate,
+      ),
+    );
   }
 
   void buyCreditsWithPex(double pexAmount) {
@@ -231,7 +238,6 @@ class WalletNotifier extends StateNotifier<WalletState> {
     if (amount <= 0) return;
 
     final safeAmount = amount > state.usdc ? state.usdc : amount;
-
     _update(state.copyWith(usdc: state.usdc - safeAmount));
   }
 
@@ -241,8 +247,6 @@ class WalletNotifier extends StateNotifier<WalletState> {
   }
 }
 
-final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((
-  ref,
-) {
+final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) {
   return WalletNotifier();
 });
