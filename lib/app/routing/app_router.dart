@@ -8,6 +8,7 @@ import '../../features/calls/views/buy_international_number_view.dart';
 import '../../features/calls/views/call_history_view.dart';
 import '../../features/calls/views/call_receipt_view.dart';
 import '../../features/calls/views/call_settings_view.dart';
+import '../../features/calls/views/my_numbers_view.dart';
 import '../../features/calls/views/pera_x_call_view.dart';
 import '../../features/calls/views/sms_inbox_view.dart';
 import '../../features/checkout/checkout_view.dart';
@@ -44,6 +45,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: CallRoutes.buyInternationalNumber,
           builder: (context, state) => const BuyInternationalNumberView(),
+        ),
+        GoRoute(
+          path: CallRoutes.myNumbers,
+          builder: (context, state) => const MyNumbersView(),
         ),
         GoRoute(
           path: CallRoutes.settings,
