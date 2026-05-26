@@ -1,7 +1,9 @@
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
+import '../../features/admin_pricing/admin_login_view.dart';
 import '../../features/admin_pricing/admin_pricing_view.dart';
+import '../../features/admin_pricing/data/admin_auth_service.dart';
 import '../../features/ai_lab/ai_lab_view.dart';
 import '../../features/bills/bill_payments_view.dart';
 import '../../features/calls/routes/call_routes.dart';
@@ -23,6 +25,15 @@ import '../../shared/layout/main_shell.dart';
 final appRouter = GoRouter(
   initialLocation: '/dashboard',
   routes: [
+    GoRoute(
+      path: '/admin-login',
+      redirect: (context, state) {
+        if (!AppConfig.enableAdminPanel) return '/dashboard';
+        if (AdminAuthService.isLoggedIn) return '/admin-pricing';
+        return null;
+      },
+      builder: (context, state) => const AdminLoginView(),
+    ),
     ShellRoute(
       builder: (context, state, child) {
         return MainShell(child: child);
@@ -36,6 +47,7 @@ final appRouter = GoRouter(
           path: '/admin-pricing',
           redirect: (context, state) {
             if (!AppConfig.enableAdminPanel) return '/dashboard';
+            if (!AdminAuthService.isLoggedIn) return '/admin-login';
             return null;
           },
           builder: (context, state) => const AdminPricingView(),
