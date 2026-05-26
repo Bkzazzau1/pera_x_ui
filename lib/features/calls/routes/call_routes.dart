@@ -6,6 +6,7 @@ import '../views/call_history_view.dart';
 import '../views/call_receipt_view.dart';
 import '../views/call_settings_view.dart';
 import '../views/pera_x_call_view.dart';
+import '../views/sms_inbox_view.dart';
 
 class CallRoutes {
   CallRoutes._();
@@ -17,6 +18,7 @@ class CallRoutes {
   static const String buyCredits = '/credits';
   static const String buyInternationalNumber =
       '/pera-x/calls/buy-international-number';
+  static const String smsInbox = '/pera-x/calls/messages';
   static const String settings = '/pera-x/calls/settings';
 
   static Map<String, WidgetBuilder> routes = {
@@ -55,6 +57,14 @@ class CallRoutes {
       );
     }
 
+    if (settings.name == smsInbox) {
+      final args = settings.arguments as SmsInboxArgs;
+
+      return MaterialPageRoute(
+        builder: (_) => SmsInboxView(phoneNumber: args.phoneNumber),
+      );
+    }
+
     return null;
   }
 }
@@ -89,4 +99,10 @@ class CallReceiptArgs {
     required this.charge,
     required this.isInternational,
   });
+}
+
+class SmsInboxArgs {
+  final String phoneNumber;
+
+  const SmsInboxArgs({required this.phoneNumber});
 }
