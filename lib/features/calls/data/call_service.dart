@@ -2,6 +2,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/config/app_config.dart';
 import '../models/call_destination_model.dart';
 import '../models/international_number_model.dart';
+import '../models/my_number_model.dart';
 import '../models/recent_call_model.dart';
 import '../models/sms_message_model.dart';
 import 'call_static_data.dart';
@@ -157,6 +158,30 @@ class CallService {
   Future<List<InternationalNumberModel>> getInternationalNumbers() async {
     await Future.delayed(const Duration(milliseconds: 250));
     return CallStaticData.internationalNumbers;
+  }
+
+  Future<List<MyNumberModel>> getMyNumbers() async {
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 450));
+      return [
+        MyNumberModel(
+          id: 'demo_number_1',
+          phoneNumber: '+14155550198',
+          country: 'United States',
+          plan: 'Monthly',
+          status: 'reserved',
+          createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+        ),
+      ];
+    }
+
+    final response = await _apiClient.get('/telecom/numbers/mine');
+    final payload = response as Map<String, dynamic>;
+    final numbers = payload['numbers'] as List? ?? const [];
+
+    return numbers
+        .map((item) => MyNumberModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<SmsMessageModel>> getSmsInbox({
