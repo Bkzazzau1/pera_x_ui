@@ -25,6 +25,7 @@ class _BuyInternationalNumberViewState
   int selectedNumberIndex = 0;
   String selectedPlan = 'Monthly';
   String? reservedPhoneNumber;
+  String? pricingWarning;
   List<InternationalNumberModel> numbers = [];
   List<NumberPricingModel> pricing = [];
 
@@ -78,23 +79,48 @@ class _BuyInternationalNumberViewState
   }
 
   Future<void> loadNumbers() async {
-    final results = await Future.wait([
-      service.getInternationalNumbers(),
-      service.getNumberPricing(),
-    ]);
+    try {
+      final loadedNumbers = await service
+          .getInternationalNumbers()
+          .timeout(const Duration(seconds: 3));
 
-    final loadedNumbers = results[0] as List<InternationalNumberModel>;
-    final loadedPricing = results[1] as List<NumberPricingModel>;
+      List<NumberPricingModel> loadedPricing = [];
+      String? warning;
 
-    if (!mounted) return;
+      try {
+        loadedPricing = await service
+            .getNumberPricing()
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {
+        warning =
+            'Using cached display prices. Backend will still confirm the final subscription charge.';
+      }
 
-    setState(() {
-      numbers = loadedNumbers;
-      pricing = loadedPricing;
-      final popularIndex = numbers.indexWhere((number) => number.popular);
-      selectedNumberIndex = popularIndex == -1 ? 0 : popularIndex;
-      isLoading = false;
-    });
+      if (!mounted) return;
+
+      setState(() {
+        numbers = loadedNumbers;
+        pricing = loadedPricing;
+        pricingWarning = warning;
+        final popularIndex = numbers.indexWhere((number) => number.popular);
+        selectedNumberIndex = popularIndex == -1 ? 0 : popularIndex;
+        isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        pricingWarning = 'Unable to load number inventory. Please try again.';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
   }
 
   Future<void> confirmPurchase() async {
@@ -204,6 +230,10 @@ class _BuyInternationalNumberViewState
                       _buildHeader(context),
                       const SizedBox(height: 22),
                       _buildHeroCard(creditBalance),
+                      if (pricingWarning != null) ...[
+                        const SizedBox(height: 12),
+                        _WarningPanel(message: pricingWarning!),
+                      ],
                       if (reservedPhoneNumber != null) ...[
                         const SizedBox(height: 16),
                         _ReservedNumberCard(
@@ -688,231 +718,3 @@ class _ReservedNumberCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Subscription Active',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  phoneNumber,
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton.icon(
-            onPressed: onOpenMessages,
-            icon: const Icon(Icons.sms_rounded, size: 18),
-            label: const Text('Messages'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF14B8A6),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanButton extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _PlanButton({
-    required this.label,
-    required this.subtitle,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: active
-                ? const Color(0xFF14B8A6).withValues(alpha: 0.16)
-                : const Color(0xFF020617),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: active
-                  ? const Color(0xFF14B8A6).withValues(alpha: 0.55)
-                  : Colors.white10,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: active ? Colors.white : Colors.white60,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool strong;
-  final bool warning;
-
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-    this.strong = false,
-    this.warning = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: strong ? Colors.white : Colors.white54,
-                fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: warning
-                  ? Colors.orange
-                  : strong
-                      ? const Color(0xFF5EEAD4)
-                      : Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroPill extends StatelessWidget {
-  final String label;
-
-  const _HeroPill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return _CapabilityPill(label: label);
-  }
-}
-
-class _CapabilityPill extends StatelessWidget {
-  final String label;
-
-  const _CapabilityPill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5EEAD4).withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF5EEAD4),
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyPanel extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-
-  const _EmptyPanel({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF020617),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.white38, size: 34),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              height: 1.35,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
