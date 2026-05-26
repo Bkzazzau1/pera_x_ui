@@ -5,24 +5,23 @@ import '../../../core/api/api_client.dart';
 import '../../../core/config/app_config.dart';
 
 enum AiDocumentTool {
-  detector(label: 'AI Detector', apiValue: 'ai_detector', creditCost: 6),
+  detector(label: 'AI Detector', apiValue: 'ai_detector', fallbackCreditCost: 6),
   plagiarism(
     label: 'Plagiarism Checker',
     apiValue: 'plagiarism_checker',
-    creditCost: 8,
+    fallbackCreditCost: 8,
   ),
-  humanizer(label: 'Humanizer AI', apiValue: 'humanizer', creditCost: 10);
+  humanizer(label: 'Humanizer AI', apiValue: 'humanizer', fallbackCreditCost: 10);
 
   final String label;
   final String apiValue;
-  final double creditCost;
+  final double fallbackCreditCost;
 
   const AiDocumentTool({
     required this.label,
     required this.apiValue,
-    required this.creditCost,
+    required this.fallbackCreditCost,
   });
-
 }
 
 class AiDocumentResultDto {
@@ -47,7 +46,7 @@ class AiDocumentResultDto {
       title: json['title']?.toString() ?? 'Document Result',
       summary: json['summary']?.toString() ?? '',
       score: (json['score'] as num?)?.toDouble() ?? 0,
-      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 6,
+      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 0,
       findings:
           (json['findings'] as List?)
               ?.map((item) => item.toString())
@@ -58,10 +57,65 @@ class AiDocumentResultDto {
   }
 }
 
+class AiAccessCheckDto {
+  final bool allowed;
+  final double creditCost;
+  final double creditBalance;
+  final double remainingCredits;
+  final String message;
+
+  const AiAccessCheckDto({
+    required this.allowed,
+    required this.creditCost,
+    required this.creditBalance,
+    required this.remainingCredits,
+    required this.message,
+  });
+
+  factory AiAccessCheckDto.fromJson(Map<String, dynamic> json) {
+    return AiAccessCheckDto(
+      allowed: json['allowed'] == true,
+      creditCost: (json['creditCost'] as num?)?.toDouble() ?? 0,
+      creditBalance: (json['creditBalance'] as num?)?.toDouble() ?? 0,
+      remainingCredits: (json['remainingCredits'] as num?)?.toDouble() ?? 0,
+      message: json['message']?.toString() ?? '',
+    );
+  }
+}
+
 class AiService {
   final ApiClient _apiClient;
 
   AiService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+
+  Future<AiAccessCheckDto> checkAccess({
+    required AiDocumentTool tool,
+    required double creditBalance,
+  }) async {
+    if (AppConfig.enableMockMode) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      final remaining = creditBalance - tool.fallbackCreditCost;
+      return AiAccessCheckDto(
+        allowed: remaining >= 0,
+        creditCost: tool.fallbackCreditCost,
+        creditBalance: creditBalance,
+        remainingCredits: remaining,
+        message: remaining >= 0
+            ? 'Credit access confirmed from backend pricing.'
+            : 'Insufficient Credits for this AI task.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/ai/access/check',
+      body: {
+        'tool': tool.apiValue,
+        'creditBalance': creditBalance,
+      },
+    );
+
+    return AiAccessCheckDto.fromJson(response as Map<String, dynamic>);
+  }
 
   Future<AiDocumentResultDto> analyzeDocument({
     required AiDocumentTool tool,
@@ -98,7 +152,7 @@ class AiService {
           summary:
               '$fileName shows mixed authorship signals with several machine-patterned sections.',
           score: 72,
-          creditCost: tool.creditCost,
+          creditCost: tool.fallbackCreditCost,
           findings: const [
             'High predictability in three body paragraphs.',
             'Low sentence variation around repeated claims.',
@@ -113,7 +167,7 @@ class AiService {
           summary:
               '$fileName has a low-to-moderate similarity profile in the demo scan.',
           score: 18,
-          creditCost: tool.creditCost,
+          creditCost: tool.fallbackCreditCost,
           findings: const [
             'Several common phrases matched public web language.',
             'No full-section duplicate detected in mock mode.',
@@ -128,7 +182,7 @@ class AiService {
           summary:
               '$fileName was rewritten for clearer rhythm, natural tone, and less formulaic phrasing.',
           score: 91,
-          creditCost: tool.creditCost,
+          creditCost: tool.fallbackCreditCost,
           findings: const [
             'Reduced repetitive transitions.',
             'Improved sentence variety.',
