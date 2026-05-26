@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/api/api_client.dart';
 import '../../../core/config/app_config.dart';
+import 'admin_auth_service.dart';
 
 class AdminUtilityPrice {
   final String serviceCode;
@@ -115,11 +116,20 @@ class AdminPricingService {
       : _apiClient = apiClient ?? ApiClient(),
         _http = httpClient ?? http.Client();
 
+  String _requiredToken() {
+    final token = AdminAuthService.token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Admin session expired. Please login again.');
+    }
+    return token;
+  }
+
   Future<AdminPricingSnapshot> getSnapshot() async {
+    final token = _requiredToken();
     final responses = await Future.wait([
-      _apiClient.get('/admin/api/pricing/utilities'),
-      _apiClient.get('/admin/api/pricing/credit-rates'),
-      _apiClient.get('/admin/api/telecom/number-pricing'),
+      _apiClient.get('/admin/api/pricing/utilities', token: token),
+      _apiClient.get('/admin/api/pricing/credit-rates', token: token),
+      _apiClient.get('/admin/api/telecom/number-pricing', token: token),
     ]);
 
     final utilitiesPayload = responses[0] as Map<String, dynamic>;
@@ -172,11 +182,13 @@ class AdminPricingService {
 
   Future<void> _patch(String path, Map<String, dynamic> body) async {
     final uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
+    final token = _requiredToken();
     final response = await _http.patch(
       uri,
-      headers: const {
+      headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
     ).timeout(AppConfig.apiTimeout);
