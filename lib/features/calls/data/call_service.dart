@@ -3,6 +3,7 @@ import '../../../core/config/app_config.dart';
 import '../models/call_destination_model.dart';
 import '../models/international_number_model.dart';
 import '../models/my_number_model.dart';
+import '../models/number_pricing_model.dart';
 import '../models/recent_call_model.dart';
 import '../models/sms_message_model.dart';
 import 'call_static_data.dart';
@@ -85,6 +86,9 @@ class ReserveNumberResultDto {
   final String plan;
   final String status;
   final double creditCost;
+  final double setupFeeCredits;
+  final double monthlyFeeCredits;
+  final DateTime? nextRenewalAt;
   final double remainingCredits;
   final String message;
 
@@ -95,8 +99,11 @@ class ReserveNumberResultDto {
     required this.plan,
     required this.status,
     required this.creditCost,
+    required this.setupFeeCredits,
+    required this.monthlyFeeCredits,
     required this.remainingCredits,
     required this.message,
+    this.nextRenewalAt,
   });
 
   bool get reserved => status == 'reserved';
@@ -109,6 +116,10 @@ class ReserveNumberResultDto {
       plan: json['plan']?.toString() ?? '',
       status: json['status']?.toString() ?? 'rejected',
       creditCost: (json['creditCost'] as num?)?.toDouble() ?? 0,
+      setupFeeCredits: (json['setupFeeCredits'] as num?)?.toDouble() ?? 0,
+      monthlyFeeCredits: (json['monthlyFeeCredits'] as num?)?.toDouble() ?? 0,
+      nextRenewalAt:
+          DateTime.tryParse(json['nextRenewalAt']?.toString() ?? ''),
       remainingCredits: (json['remainingCredits'] as num?)?.toDouble() ?? 0,
       message: json['message']?.toString() ?? '',
     );
@@ -158,6 +169,46 @@ class CallService {
   Future<List<InternationalNumberModel>> getInternationalNumbers() async {
     await Future.delayed(const Duration(milliseconds: 250));
     return CallStaticData.internationalNumbers;
+  }
+
+  Future<List<NumberPricingModel>> getNumberPricing() async {
+    if (AppConfig.enableMockMode) {
+      await Future.delayed(const Duration(milliseconds: 350));
+      return const [
+        NumberPricingModel(
+          country: 'United States',
+          numberType: 'local',
+          setupFeeCredits: 10,
+          monthlyFeeCredits: 30,
+          annualFeeCredits: 300,
+          currency: 'CREDITS',
+        ),
+        NumberPricingModel(
+          country: 'United Kingdom',
+          numberType: 'local',
+          setupFeeCredits: 10,
+          monthlyFeeCredits: 35,
+          annualFeeCredits: 350,
+          currency: 'CREDITS',
+        ),
+        NumberPricingModel(
+          country: 'Canada',
+          numberType: 'local',
+          setupFeeCredits: 10,
+          monthlyFeeCredits: 30,
+          annualFeeCredits: 300,
+          currency: 'CREDITS',
+        ),
+      ];
+    }
+
+    final response = await _apiClient.get('/telecom/numbers/pricing');
+    final payload = response as Map<String, dynamic>;
+    final pricing = payload['pricing'] as List? ?? const [];
+
+    return pricing
+        .map((item) => NumberPricingModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<MyNumberModel>> getMyNumbers() async {
@@ -226,12 +277,24 @@ class CallService {
     required String country,
     required String number,
     required String plan,
-    required double creditAmount,
     required double creditBalance,
+    String numberType = 'local',
   }) async {
     if (AppConfig.enableMockMode) {
       await Future.delayed(const Duration(milliseconds: 650));
-      final reserved = creditBalance >= creditAmount;
+      final pricing = (await getNumberPricing()).firstWhere(
+        (item) => item.country == country && item.numberType == numberType,
+        orElse: () => const NumberPricingModel(
+          country: 'Default',
+          numberType: 'local',
+          setupFeeCredits: 10,
+          monthlyFeeCredits: 30,
+          annualFeeCredits: 300,
+          currency: 'CREDITS',
+        ),
+      );
+      final creditCost = pricing.totalForPlan(plan);
+      final reserved = creditBalance >= creditCost;
 
       return ReserveNumberResultDto(
         orderId: 'demo_num_order_${DateTime.now().millisecondsSinceEpoch}',
@@ -239,10 +302,15 @@ class CallService {
         country: country,
         plan: plan,
         status: reserved ? 'reserved' : 'rejected',
-        creditCost: reserved ? creditAmount : 0,
-        remainingCredits: creditBalance - creditAmount,
+        creditCost: reserved ? creditCost : 0,
+        setupFeeCredits: pricing.setupFeeCredits,
+        monthlyFeeCredits: pricing.monthlyFeeCredits,
+        nextRenewalAt: DateTime.now().add(
+          Duration(days: plan.toLowerCase() == 'annual' ? 365 : 30),
+        ),
+        remainingCredits: creditBalance - creditCost,
         message: reserved
-            ? 'Global number reservation accepted.'
+            ? 'Global number reservation accepted. The number is a recurring subscription.'
             : 'Global number reservation rejected. Insufficient Credits.',
       );
     }
@@ -253,8 +321,8 @@ class CallService {
         'country': country,
         'phoneNumber': number,
         'plan': plan,
-        'creditAmount': creditAmount,
         'creditBalance': creditBalance,
+        'numberType': numberType,
       },
     );
 
