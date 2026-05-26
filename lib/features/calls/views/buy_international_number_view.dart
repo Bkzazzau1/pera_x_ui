@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../wallet/state/wallet_provider.dart';
 import '../data/call_service.dart';
 import '../models/international_number_model.dart';
+import '../models/number_pricing_model.dart';
 import '../routes/call_routes.dart';
 
 class BuyInternationalNumberView extends ConsumerStatefulWidget {
@@ -25,18 +26,50 @@ class _BuyInternationalNumberViewState
   String selectedPlan = 'Monthly';
   String? reservedPhoneNumber;
   List<InternationalNumberModel> numbers = [];
+  List<NumberPricingModel> pricing = [];
 
   InternationalNumberModel? get selectedNumber {
     if (numbers.isEmpty) return null;
     return numbers[selectedNumberIndex];
   }
 
-  double get totalDue {
+  NumberPricingModel? get selectedPricing {
     final number = selectedNumber;
-    if (number == null) return 0;
-    final multiplier = selectedPlan == 'Annual' ? 10 : 1;
-    return number.setupFeeCredit + (number.monthlyFeeCredit * multiplier);
+    if (number == null) return null;
+
+    for (final item in pricing) {
+      if (item.country == number.country && item.numberType == 'local') {
+        return item;
+      }
+    }
+
+    return null;
   }
+
+  double get setupFee {
+    final price = selectedPricing;
+    final number = selectedNumber;
+    return price?.setupFeeCredits ?? number?.setupFeeCredit ?? 0;
+  }
+
+  double get subscriptionFee {
+    final price = selectedPricing;
+    final number = selectedNumber;
+
+    if (selectedPlan == 'Annual') {
+      return price?.annualFeeCredits ?? ((number?.monthlyFeeCredit ?? 0) * 10);
+    }
+
+    return price?.monthlyFeeCredits ?? number?.monthlyFeeCredit ?? 0;
+  }
+
+  double get monthlyFee {
+    final price = selectedPricing;
+    final number = selectedNumber;
+    return price?.monthlyFeeCredits ?? number?.monthlyFeeCredit ?? 0;
+  }
+
+  double get totalDue => setupFee + subscriptionFee;
 
   @override
   void initState() {
@@ -45,12 +78,19 @@ class _BuyInternationalNumberViewState
   }
 
   Future<void> loadNumbers() async {
-    final loadedNumbers = await service.getInternationalNumbers();
+    final results = await Future.wait([
+      service.getInternationalNumbers(),
+      service.getNumberPricing(),
+    ]);
+
+    final loadedNumbers = results[0] as List<InternationalNumberModel>;
+    final loadedPricing = results[1] as List<NumberPricingModel>;
 
     if (!mounted) return;
 
     setState(() {
       numbers = loadedNumbers;
+      pricing = loadedPricing;
       final popularIndex = numbers.indexWhere((number) => number.popular);
       selectedNumberIndex = popularIndex == -1 ? 0 : popularIndex;
       isLoading = false;
@@ -81,7 +121,6 @@ class _BuyInternationalNumberViewState
         country: number.country,
         number: number.sampleNumber,
         plan: selectedPlan,
-        creditAmount: totalDue,
         creditBalance: wallet.credits,
       );
 
@@ -109,7 +148,7 @@ class _BuyInternationalNumberViewState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${response.phoneNumber} reserved. ${response.creditCost.toStringAsFixed(0)} Credits charged.',
+            '${response.phoneNumber} reserved. ${response.creditCost.toStringAsFixed(0)} Credits charged. Subscription renews monthly.',
           ),
           backgroundColor: const Color(0xFF16A34A),
         ),
@@ -234,7 +273,7 @@ class _BuyInternationalNumberViewState
               ),
               SizedBox(height: 2),
               Text(
-                'Reserve an international line using Credits',
+                'Recurring monthly number subscription',
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
             ],
@@ -290,7 +329,7 @@ class _BuyInternationalNumberViewState
               Icon(Icons.sim_card_rounded, color: Color(0xFF38BDF8)),
               SizedBox(width: 8),
               Text(
-                'International Caller ID',
+                'Global Number Subscription',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -301,7 +340,7 @@ class _BuyInternationalNumberViewState
           ),
           const SizedBox(height: 14),
           const Text(
-            'Receive calls and place outbound calls with a trusted local presence in supported countries.',
+            'Reserve a global number for calls and SMS. Pricing is controlled by backend settings and renews every month.',
             style: TextStyle(color: Colors.white, fontSize: 20, height: 1.25),
           ),
           const SizedBox(height: 16),
@@ -318,9 +357,9 @@ class _BuyInternationalNumberViewState
             spacing: 8,
             runSpacing: 8,
             children: const [
-              _HeroPill(label: 'Voice enabled'),
+              _HeroPill(label: 'Admin pricing'),
+              _HeroPill(label: 'Monthly renewal'),
               _HeroPill(label: 'SMS ready'),
-              _HeroPill(label: 'Credit billing'),
             ],
           ),
         ],
@@ -341,6 +380,11 @@ class _BuyInternationalNumberViewState
       children: List.generate(numbers.length, (index) {
         final number = numbers[index];
         final active = selectedNumberIndex == index;
+        final itemPricing = pricing
+            .where((item) => item.country == number.country && item.numberType == 'local')
+            .cast<NumberPricingModel?>()
+            .firstWhere((item) => item != null, orElse: () => null);
+        final monthly = itemPricing?.monthlyFeeCredits ?? number.monthlyFeeCredit;
 
         return InkWell(
           onTap: () => setState(() => selectedNumberIndex = index),
@@ -419,7 +463,7 @@ class _BuyInternationalNumberViewState
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${number.sampleNumber} • ${number.monthlyFeeCredit.toStringAsFixed(0)} Credits/mo',
+                        '${number.sampleNumber} • ${monthly.toStringAsFixed(0)} Credits/mo',
                         style: const TextStyle(
                           color: Color(0x80FFFFFF),
                           fontSize: 12,
@@ -467,14 +511,14 @@ class _BuyInternationalNumberViewState
             children: [
               _PlanButton(
                 label: 'Monthly',
-                subtitle: 'Pay every month',
+                subtitle: 'Renews every month',
                 active: selectedPlan == 'Monthly',
                 onTap: () => setState(() => selectedPlan = 'Monthly'),
               ),
               const SizedBox(width: 10),
               _PlanButton(
                 label: 'Annual',
-                subtitle: '2 months free',
+                subtitle: 'Admin-set annual price',
                 active: selectedPlan == 'Annual',
                 onTap: () => setState(() => selectedPlan = 'Annual'),
               ),
@@ -503,7 +547,7 @@ class _BuyInternationalNumberViewState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Purchase Summary',
+            'Subscription Summary',
             style: TextStyle(
               color: Colors.white,
               fontSize: 15,
@@ -513,13 +557,16 @@ class _BuyInternationalNumberViewState
           const SizedBox(height: 12),
           _SummaryRow(label: 'Number', value: number.sampleNumber),
           _SummaryRow(
-            label: 'Setup',
-            value: '${number.setupFeeCredit.toStringAsFixed(0)} Credits',
+            label: 'Setup fee',
+            value: '${setupFee.toStringAsFixed(0)} Credits',
           ),
           _SummaryRow(
-            label: selectedPlan == 'Annual' ? 'Annual service' : 'Monthly',
-            value:
-                '${(totalDue - number.setupFeeCredit).toStringAsFixed(0)} Credits',
+            label: selectedPlan == 'Annual' ? 'Annual subscription' : 'Monthly subscription',
+            value: '${subscriptionFee.toStringAsFixed(0)} Credits',
+          ),
+          _SummaryRow(
+            label: 'Renewal amount',
+            value: '${monthlyFee.toStringAsFixed(0)} Credits/month',
           ),
           const Divider(color: Colors.white10, height: 22),
           _SummaryRow(
@@ -534,6 +581,11 @@ class _BuyInternationalNumberViewState
                 : 'Insufficient Credits',
             strong: true,
             warning: !hasEnoughCredits,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'The backend confirms the final charge. Admin can update setup and subscription prices from backend settings.',
+            style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.35),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -573,9 +625,9 @@ class _BuyInternationalNumberViewState
                 : Icons.add_card_rounded),
         label: Text(
           isSubmitting
-              ? 'Reserving...'
+              ? 'Confirming Subscription...'
               : hasEnoughCredits
-                  ? 'Buy Number with Credits'
+                  ? 'Start Number Subscription'
                   : 'Buy Credits First',
         ),
         style: ElevatedButton.styleFrom(
@@ -636,7 +688,7 @@ class _ReservedNumberCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Number Reserved',
+                  'Subscription Active',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
