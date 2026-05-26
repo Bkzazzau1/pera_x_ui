@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../features/admin_pricing/admin_pricing_view.dart';
 import '../../features/ai_lab/ai_lab_view.dart';
 import '../../features/bills/bill_payments_view.dart';
@@ -33,6 +34,10 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/admin-pricing',
+          redirect: (context, state) {
+            if (!AppConfig.enableAdminPanel) return '/dashboard';
+            return null;
+          },
           builder: (context, state) => const AdminPricingView(),
         ),
         GoRoute(
