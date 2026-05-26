@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../wallet/state/wallet_provider.dart';
 import '../data/call_service.dart';
 import '../models/international_number_model.dart';
+import '../routes/call_routes.dart';
 
 class BuyInternationalNumberView extends ConsumerStatefulWidget {
   const BuyInternationalNumberView({super.key});
@@ -22,6 +23,7 @@ class _BuyInternationalNumberViewState
   bool isSubmitting = false;
   int selectedNumberIndex = 0;
   String selectedPlan = 'Monthly';
+  String? reservedPhoneNumber;
   List<InternationalNumberModel> numbers = [];
 
   InternationalNumberModel? get selectedNumber {
@@ -102,6 +104,7 @@ class _BuyInternationalNumberViewState
       }
 
       ref.read(walletProvider.notifier).spendCredits(response.creditCost);
+      setState(() => reservedPhoneNumber = response.phoneNumber);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -121,6 +124,13 @@ class _BuyInternationalNumberViewState
         ),
       );
     }
+  }
+
+  void openMessages(String phoneNumber) {
+    context.push(
+      CallRoutes.smsInbox,
+      extra: SmsInboxArgs(phoneNumber: phoneNumber),
+    );
   }
 
   @override
@@ -155,6 +165,13 @@ class _BuyInternationalNumberViewState
                       _buildHeader(context),
                       const SizedBox(height: 22),
                       _buildHeroCard(creditBalance),
+                      if (reservedPhoneNumber != null) ...[
+                        const SizedBox(height: 16),
+                        _ReservedNumberCard(
+                          phoneNumber: reservedPhoneNumber!,
+                          onOpenMessages: () => openMessages(reservedPhoneNumber!),
+                        ),
+                      ],
                       const SizedBox(height: 22),
                       const Text(
                         'Available Countries',
@@ -574,6 +591,90 @@ class _BuyInternationalNumberViewState
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
+      ),
+    );
+  }
+}
+
+class _ReservedNumberCard extends StatelessWidget {
+  final String phoneNumber;
+  final VoidCallback onOpenMessages;
+
+  const _ReservedNumberCard({
+    required this.phoneNumber,
+    required this.onOpenMessages,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF07111F).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFF14B8A6).withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 50,
+            width: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF14B8A6).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.verified_rounded,
+              color: Color(0xFF5EEAD4),
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Number Reserved',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  phoneNumber,
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton.icon(
+            onPressed: onOpenMessages,
+            icon: const Icon(Icons.sms_rounded, size: 18),
+            label: const Text('Messages'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF14B8A6),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
