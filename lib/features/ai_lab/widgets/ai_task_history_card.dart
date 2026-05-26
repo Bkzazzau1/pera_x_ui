@@ -78,7 +78,7 @@ class AiTaskHistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Recent AI Detector, Humanizer AI, and Plagiarism Checker tasks. Backend will later persist full history.',
+            'Recent AI Detector, Humanizer AI, and Plagiarism Checker tasks.',
             style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 16),

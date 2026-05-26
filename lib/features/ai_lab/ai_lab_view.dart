@@ -104,20 +104,21 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
         tool: selectedTool,
         fileName: file?.name,
         fileBytes: bytes,
-        pastedText:
-            toolInstructions.trim().isEmpty ? null : toolInstructions.trim(),
+        pastedText: toolInstructions.trim().isEmpty
+            ? null
+            : toolInstructions.trim(),
       );
 
       if (!mounted) return;
 
-      final finalCreditCost =
-          response.creditCost > 0 ? response.creditCost : access.creditCost;
+      final finalCreditCost = response.creditCost > 0
+          ? response.creditCost
+          : access.creditCost;
 
       ref.read(walletProvider.notifier).spendCredits(finalCreditCost);
-      ref.read(transactionProvider.notifier).addAiPrompt(
-            model: selectedTool.label,
-            creditCost: finalCreditCost,
-          );
+      ref
+          .read(transactionProvider.notifier)
+          .addAiPrompt(model: selectedTool.label, creditCost: finalCreditCost);
 
       setState(() {
         result = AiDocumentResultDto(
@@ -292,7 +293,7 @@ class _PricingFallbackBanner extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Displaying fallback prices. Backend will still confirm the final Credit charge.',
+              'Displaying estimated prices. Final Credit charge is confirmed before processing.',
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ),
@@ -519,7 +520,7 @@ class _HumanizerToneSelector extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Choose the tone before rewriting. Backend will receive this as part of the Humanizer AI instruction.',
+            'Choose the tone before rewriting.',
             style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 14),
@@ -703,7 +704,11 @@ class _RunPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return FilledButton.icon(
       onPressed: hasInput && !isProcessing ? onRun : null,
-      icon: Icon(isProcessing ? Icons.hourglass_bottom_rounded : Icons.auto_awesome_rounded),
+      icon: Icon(
+        isProcessing
+            ? Icons.hourglass_bottom_rounded
+            : Icons.auto_awesome_rounded,
+      ),
       label: Text(
         isProcessing
             ? 'PROCESSING ${tool.label.toUpperCase()}'
@@ -747,7 +752,7 @@ class _ProcessingState extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Backend is confirming Credits and processing the AI task...',
+              'Confirming Credits and processing the AI task...',
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ),
@@ -795,7 +800,11 @@ class _ResultPanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             result.summary,
-            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -813,8 +822,11 @@ class _ResultPanel extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle_rounded,
-                      color: PeraXColors.cyan, size: 17),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: PeraXColors.cyan,
+                    size: 17,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

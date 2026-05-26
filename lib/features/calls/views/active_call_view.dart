@@ -99,7 +99,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
           SnackBar(
             content: Text(
               response.message.isEmpty
-                  ? 'Call could not be completed. Backend rejected the final charge.'
+                  ? 'Call could not be completed. The final charge was not approved.'
                   : response.message,
             ),
             backgroundColor: const Color(0xFFDC2626),
@@ -129,7 +129,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Could not confirm final call charge from backend. No Credits were deducted. ${error.toString()}',
+            'Could not confirm final call charge. No Credits were deducted. ${error.toString()}',
           ),
           backgroundColor: const Color(0xFFDC2626),
         ),
@@ -257,7 +257,11 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
               ),
             ],
           ),
-          child: const Icon(Icons.person_rounded, color: Colors.white, size: 54),
+          child: const Icon(
+            Icons.person_rounded,
+            color: Colors.white,
+            size: 54,
+          ),
         ),
         const SizedBox(height: 20),
         Text(
@@ -305,7 +309,7 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
       child: Row(
         children: [
           _InfoItem(
-            title: 'Backend rate',
+            title: 'Rate',
             value: '${widget.ratePerMinute.toStringAsFixed(2)} Credits/min',
           ),
           Container(width: 1, height: 36, color: Colors.white10),
@@ -316,7 +320,11 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
           Container(width: 1, height: 36, color: Colors.white10),
           _InfoItem(
             title: 'Status',
-            value: isEndingCall ? 'Confirming' : isOnHold ? 'On hold' : 'Connected',
+            value: isEndingCall
+                ? 'Confirming'
+                : isOnHold
+                ? 'On hold'
+                : 'Connected',
           ),
         ],
       ),
@@ -336,7 +344,9 @@ class _ActiveCallViewState extends ConsumerState<ActiveCallView> {
               onTap: () => setState(() => isMuted = !isMuted),
             ),
             _CallControlButton(
-              icon: isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_down_rounded,
+              icon: isSpeakerOn
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_down_rounded,
               label: 'Speaker',
               active: isSpeakerOn,
               onTap: () => setState(() => isSpeakerOn = !isSpeakerOn),

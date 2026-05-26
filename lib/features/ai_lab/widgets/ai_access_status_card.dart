@@ -67,7 +67,7 @@ class AiAccessStatusCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       hasAccess
-                          ? 'Backend will confirm credit access before processing ${selectedTool.label}.'
+                          ? 'Credit access will be confirmed before processing ${selectedTool.label}.'
                           : 'Buy Credits before running this AI tool.',
                       style: const TextStyle(
                         color: Colors.white54,

@@ -41,7 +41,9 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
     if (wallet.credits < totalCredits) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Insufficient Credits. Buy Credits before paying for this service.'),
+          content: Text(
+            'Insufficient Credits. Buy Credits before paying for this service.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -215,7 +217,9 @@ class _CheckoutViewState extends ConsumerState<CheckoutView> {
                       const SizedBox(height: 24),
                       _ConfirmButton(
                         isLoading: isConfirming,
-                        label: hasEnoughCredits ? 'PAY WITH CREDITS' : 'BUY CREDITS FIRST',
+                        label: hasEnoughCredits
+                            ? 'PAY WITH CREDITS'
+                            : 'BUY CREDITS FIRST',
                         onPressed: hasEnoughCredits
                             ? () => _confirmOrder(selectedProduct)
                             : () => context.go('/credits'),
@@ -371,7 +375,9 @@ class _CreditBalanceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hasEnoughCredits ? 'Credit Balance Ready' : 'Insufficient Credits',
+                  hasEnoughCredits
+                      ? 'Credit Balance Ready'
+                      : 'Insufficient Credits',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
@@ -414,12 +420,19 @@ class _FundingReminder extends StatelessWidget {
       radius: 28,
       child: Row(
         children: [
-          const Icon(Icons.account_balance_wallet_outlined, color: PeraXColors.cyan),
+          const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: PeraXColors.cyan,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Need more balance? Buy Credits with ${method.title}, then return here to pay for the service.',
-              style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4),
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 12,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -595,7 +608,7 @@ class _SuccessView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Credits were deducted for this service. Trading company settlement, provider payment, buyback, burn, and liquidity support are handled by backend policy.',
+                  'Credits were deducted for this service. Settlement, provider payment, buyback, burn, and liquidity support are handled automatically.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white60,

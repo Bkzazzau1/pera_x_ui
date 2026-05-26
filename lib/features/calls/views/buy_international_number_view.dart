@@ -80,20 +80,20 @@ class _BuyInternationalNumberViewState
 
   Future<void> loadNumbers() async {
     try {
-      final loadedNumbers = await service
-          .getInternationalNumbers()
-          .timeout(const Duration(seconds: 3));
+      final loadedNumbers = await service.getInternationalNumbers().timeout(
+        const Duration(seconds: 3),
+      );
 
       List<NumberPricingModel> loadedPricing = [];
       String? warning;
 
       try {
-        loadedPricing = await service
-            .getNumberPricing()
-            .timeout(const Duration(seconds: 4));
+        loadedPricing = await service.getNumberPricing().timeout(
+          const Duration(seconds: 4),
+        );
       } catch (_) {
         warning =
-            'Using cached display prices. Backend will still confirm the final subscription charge.';
+            'Using estimated prices. Final subscription charge is confirmed before purchase.';
       }
 
       if (!mounted) return;
@@ -132,7 +132,9 @@ class _BuyInternationalNumberViewState
     if (wallet.credits < totalDue) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Insufficient Credits. Buy Credits before reserving this number.'),
+          content: Text(
+            'Insufficient Credits. Buy Credits before reserving this number.',
+          ),
           backgroundColor: Color(0xFFDC2626),
         ),
       );
@@ -238,7 +240,8 @@ class _BuyInternationalNumberViewState
                         const SizedBox(height: 16),
                         _ReservedNumberCard(
                           phoneNumber: reservedPhoneNumber!,
-                          onOpenMessages: () => openMessages(reservedPhoneNumber!),
+                          onOpenMessages: () =>
+                              openMessages(reservedPhoneNumber!),
                         ),
                       ],
                       const SizedBox(height: 22),
@@ -363,7 +366,7 @@ class _BuyInternationalNumberViewState
           ),
           const SizedBox(height: 14),
           const Text(
-            'Reserve a global number for calls and SMS. Pricing is controlled by backend settings and renews every month.',
+            'Reserve a global number for calls and SMS. Pricing renews every month.',
             style: TextStyle(color: Colors.white, fontSize: 20, height: 1.25),
           ),
           const SizedBox(height: 16),
@@ -404,10 +407,14 @@ class _BuyInternationalNumberViewState
         final number = numbers[index];
         final active = selectedNumberIndex == index;
         final itemPricing = pricing
-            .where((item) => item.country == number.country && item.numberType == 'local')
+            .where(
+              (item) =>
+                  item.country == number.country && item.numberType == 'local',
+            )
             .cast<NumberPricingModel?>()
             .firstWhere((item) => item != null, orElse: () => null);
-        final monthly = itemPricing?.monthlyFeeCredits ?? number.monthlyFeeCredit;
+        final monthly =
+            itemPricing?.monthlyFeeCredits ?? number.monthlyFeeCredit;
 
         return InkWell(
           onTap: () => setState(() => selectedNumberIndex = index),
@@ -437,7 +444,10 @@ class _BuyInternationalNumberViewState
                         : Colors.white.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: Text(number.flag, style: const TextStyle(fontSize: 25)),
+                  child: Text(
+                    number.flag,
+                    style: const TextStyle(fontSize: 25),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -464,7 +474,9 @@ class _BuyInternationalNumberViewState
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF14B8A6).withValues(alpha: 0.18),
+                                color: const Color(
+                                  0xFF14B8A6,
+                                ).withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: const Text(
@@ -574,7 +586,10 @@ class _BuyInternationalNumberViewState
           ),
           const SizedBox(height: 12),
           _SummaryRow(label: 'Number', value: number.sampleNumber),
-          _SummaryRow(label: 'Setup fee', value: '${setupFee.toStringAsFixed(0)} Credits'),
+          _SummaryRow(
+            label: 'Setup fee',
+            value: '${setupFee.toStringAsFixed(0)} Credits',
+          ),
           _SummaryRow(
             label: selectedPlan == 'Annual'
                 ? 'Annual subscription'
@@ -601,7 +616,7 @@ class _BuyInternationalNumberViewState
           ),
           const SizedBox(height: 12),
           const Text(
-            'The backend confirms the final charge. Admin can update setup and subscription prices from backend settings.',
+            'The final charge is confirmed before purchase. Setup and subscription prices may change.',
             style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.35),
           ),
           const SizedBox(height: 12),
@@ -626,8 +641,8 @@ class _BuyInternationalNumberViewState
         onPressed: isSubmitting
             ? null
             : hasEnoughCredits
-                ? confirmPurchase
-                : () => context.go('/credits'),
+            ? confirmPurchase
+            : () => context.go('/credits'),
         icon: isSubmitting
             ? const SizedBox(
                 height: 18,
@@ -637,23 +652,29 @@ class _BuyInternationalNumberViewState
                   color: Colors.white,
                 ),
               )
-            : Icon(hasEnoughCredits
-                ? Icons.shopping_cart_checkout_rounded
-                : Icons.add_card_rounded),
+            : Icon(
+                hasEnoughCredits
+                    ? Icons.shopping_cart_checkout_rounded
+                    : Icons.add_card_rounded,
+              ),
         label: Text(
           isSubmitting
               ? 'Confirming Subscription...'
               : hasEnoughCredits
-                  ? 'Start Number Subscription'
-                  : 'Buy Credits First',
+              ? 'Start Number Subscription'
+              : 'Buy Credits First',
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF14B8A6),
-          disabledBackgroundColor: const Color(0xFF14B8A6).withValues(alpha: 0.45),
+          disabledBackgroundColor: const Color(
+            0xFF14B8A6,
+          ).withValues(alpha: 0.45),
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 17),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
       ),
@@ -678,7 +699,9 @@ class _ReservedNumberCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF07111F).withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF14B8A6).withValues(alpha: 0.45)),
+        border: Border.all(
+          color: const Color(0xFF14B8A6).withValues(alpha: 0.45),
+        ),
       ),
       child: Row(
         children: [
@@ -730,8 +753,13 @@ class _ReservedNumberCard extends StatelessWidget {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -757,12 +785,20 @@ class _WarningPanel extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Colors.orange,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.35),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                height: 1.35,
+              ),
             ),
           ),
         ],
@@ -860,8 +896,8 @@ class _SummaryRow extends StatelessWidget {
               color: warning
                   ? Colors.orange
                   : strong
-                      ? const Color(0xFF5EEAD4)
-                      : Colors.white,
+                  ? const Color(0xFF5EEAD4)
+                  : Colors.white,
               fontWeight: FontWeight.w900,
             ),
           ),

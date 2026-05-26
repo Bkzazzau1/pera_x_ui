@@ -75,10 +75,12 @@ class CreditService {
         assetCode: isPex ? 'PEX' : 'FIAT_USD',
         assetRequired: assetRequired,
         pexRequired: isPex ? assetRequired : 0,
-        remainingPex: pexBalance == null ? null : pexBalance - (isPex ? assetRequired : 0),
+        remainingPex: pexBalance == null
+            ? null
+            : pexBalance - (isPex ? assetRequired : 0),
         creditsPerUnit: creditsPerUnit,
         status: 'pending_settlement',
-        message: 'Credit purchase request accepted using backend exchange rate.',
+        message: 'Credit purchase request accepted.',
       );
     }
 

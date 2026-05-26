@@ -34,8 +34,10 @@ class PaymentInstructionsCard extends StatelessWidget {
           icon: Icons.qr_code_2,
           accent: PeraXColors.cyan,
           title: 'Pay with Pera-X Token',
-          subtitle: 'Connect wallet or scan QR to authorize the Pera-X equivalent. This method gives the best discount and supports the burn engine.',
-          footer: 'Estimated payable: \$${totalUsd.toStringAsFixed(2)} after Pera-X discount',
+          subtitle:
+              'Connect wallet or scan QR to authorize the Pera-X equivalent. This method gives the best discount and supports the burn engine.',
+          footer:
+              'Estimated payable: \$${totalUsd.toStringAsFixed(2)} after Pera-X discount',
           showQr: true,
         );
       case PaymentMethodType.stablecoin:
@@ -44,8 +46,10 @@ class PaymentInstructionsCard extends StatelessWidget {
           icon: Icons.currency_exchange_outlined,
           accent: Color(0xFF7CFFB2),
           title: 'Pay with Stablecoin',
-          subtitle: 'Choose USDT or USDC later, send the exact amount, and wait for confirmation before service delivery.',
-          footer: 'Stablecoin checkout will support wallet address and QR confirmation.',
+          subtitle:
+              'Choose USDT or USDC later, send the exact amount, and wait for confirmation before service delivery.',
+          footer:
+              'Stablecoin checkout will support wallet address and QR confirmation.',
         );
       case PaymentMethodType.card:
         return const _InstructionLayout(
@@ -53,7 +57,8 @@ class PaymentInstructionsCard extends StatelessWidget {
           icon: Icons.credit_card_outlined,
           accent: Color(0xFFFFD166),
           title: 'Pay with Card',
-          subtitle: 'Continue to a provider checkout. After approval, Pera-X backend records the utility payment and applies policy rules.',
+          subtitle:
+              'Continue to checkout. After approval, Pera-X records the utility payment and applies account rules.',
           footer: 'Card payment does not require the user to hold Pera-X.',
         );
       case PaymentMethodType.virtualAccountNg:
@@ -62,7 +67,8 @@ class PaymentInstructionsCard extends StatelessWidget {
           icon: Icons.account_balance_outlined,
           accent: Color(0xFF9DB7FF),
           title: 'Bank Transfer / VA',
-          subtitle: 'Generate an eligible-country virtual account with exact amount and expiry timer. Service activates after transfer confirmation.',
+          subtitle:
+              'Generate an eligible-country virtual account with exact amount and expiry timer. Service activates after transfer confirmation.',
           footer: 'Available in eligible countries only.',
         );
     }
@@ -120,7 +126,11 @@ class _InstructionLayout extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           subtitle,
-          style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.45),
+          style: const TextStyle(
+            color: Colors.white60,
+            fontSize: 13,
+            height: 1.45,
+          ),
         ),
         if (showQr) ...[
           const SizedBox(height: 18),

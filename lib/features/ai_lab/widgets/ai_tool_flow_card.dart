@@ -84,7 +84,9 @@ class AiToolFlowCard extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  hasAccess ? Icons.verified_rounded : Icons.lock_outline_rounded,
+                  hasAccess
+                      ? Icons.verified_rounded
+                      : Icons.lock_outline_rounded,
                   color: hasAccess ? PeraXColors.cyan : Colors.orange,
                   size: 20,
                 ),
@@ -92,7 +94,7 @@ class AiToolFlowCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     hasAccess
-                        ? 'Credit access ready. Backend will confirm balance before processing.'
+                        ? 'Credit access ready. Balance will be confirmed before processing.'
                         : 'More Credits are required before this AI task can run.',
                     style: TextStyle(
                       color: hasAccess ? PeraXColors.cyan : Colors.orange,
@@ -116,12 +118,12 @@ class AiToolFlowCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           ...steps.asMap().entries.map(
-                (entry) => _FlowStep(
-                  index: entry.key + 1,
-                  text: entry.value,
-                  isLast: entry.key == steps.length - 1,
-                ),
-              ),
+            (entry) => _FlowStep(
+              index: entry.key + 1,
+              text: entry.value,
+              isLast: entry.key == steps.length - 1,
+            ),
+          ),
         ],
       ),
     );
@@ -165,21 +167,21 @@ class AiToolFlowCard extends StatelessWidget {
       case AiDocumentTool.detector:
         return const [
           'Upload document or paste text.',
-          'Backend confirms Credit access.',
+          'Confirm Credit access.',
           'AI scans predictability, repetition, and sentence pattern risk.',
           'Show AI probability score, flagged signals, and improvement advice.',
         ];
       case AiDocumentTool.plagiarism:
         return const [
           'Upload document or paste text.',
-          'Backend confirms Credit access.',
+          'Confirm Credit access.',
           'Similarity engine checks matching and citation risk.',
           'Show similarity score, risky sections, and citation recommendations.',
         ];
       case AiDocumentTool.humanizer:
         return const [
           'Upload document or paste text.',
-          'Backend confirms Credit access.',
+          'Confirm Credit access.',
           'User can add tone instructions before processing.',
           'Show humanized output with copy-ready rewritten text.',
         ];
@@ -212,7 +214,9 @@ class _FlowStep extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: PeraXColors.cyan.withValues(alpha: 0.12),
-                  border: Border.all(color: PeraXColors.cyan.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: PeraXColors.cyan.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Center(
                   child: Text(

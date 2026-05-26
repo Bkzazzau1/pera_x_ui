@@ -5,13 +5,21 @@ import '../../../core/api/api_client.dart';
 import '../../../core/config/app_config.dart';
 
 enum AiDocumentTool {
-  detector(label: 'AI Detector', apiValue: 'ai_detector', fallbackCreditCost: 6),
+  detector(
+    label: 'AI Detector',
+    apiValue: 'ai_detector',
+    fallbackCreditCost: 6,
+  ),
   plagiarism(
     label: 'Plagiarism Checker',
     apiValue: 'plagiarism_checker',
     fallbackCreditCost: 8,
   ),
-  humanizer(label: 'Humanizer AI', apiValue: 'humanizer', fallbackCreditCost: 10);
+  humanizer(
+    label: 'Humanizer AI',
+    apiValue: 'humanizer',
+    fallbackCreditCost: 10,
+  );
 
   final String label;
   final String apiValue;
@@ -101,17 +109,14 @@ class AiService {
         creditBalance: creditBalance,
         remainingCredits: remaining,
         message: remaining >= 0
-            ? 'Credit access confirmed from backend pricing.'
+            ? 'Credit access confirmed.'
             : 'Insufficient Credits for this AI task.',
       );
     }
 
     final response = await _apiClient.post(
       '/ai/access/check',
-      body: {
-        'tool': tool.apiValue,
-        'creditBalance': creditBalance,
-      },
+      body: {'tool': tool.apiValue, 'creditBalance': creditBalance},
     );
 
     return AiAccessCheckDto.fromJson(response as Map<String, dynamic>);
@@ -164,13 +169,12 @@ class AiService {
       case AiDocumentTool.plagiarism:
         return AiDocumentResultDto(
           title: 'Plagiarism Check Report',
-          summary:
-              '$fileName has a low-to-moderate similarity profile in the demo scan.',
+          summary: '$fileName has a low-to-moderate similarity profile.',
           score: 18,
           creditCost: tool.fallbackCreditCost,
           findings: const [
             'Several common phrases matched public web language.',
-            'No full-section duplicate detected in mock mode.',
+            'No full-section duplicate detected.',
             'Citation review recommended for statistical claims.',
           ],
           output:
