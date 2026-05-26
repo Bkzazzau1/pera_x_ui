@@ -39,10 +39,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
     super.dispose();
   }
 
-  double _adminCostFor(
-    List<UtilityPriceModel>? pricing,
-    AiDocumentTool tool,
-  ) {
+  double _adminCostFor(List<UtilityPriceModel>? pricing, AiDocumentTool tool) {
     return pricing?.costFor(tool.apiValue, tool.fallbackCreditCost) ??
         tool.fallbackCreditCost;
   }
@@ -65,7 +62,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
     });
   }
 
-  Future<void> _runTool(double displayedCreditCost) async {
+  Future<void> _runTool() async {
     final file = selectedFile;
     final bytes = selectedBytes;
     final wallet = ref.read(walletProvider);
@@ -107,21 +104,17 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
         tool: selectedTool,
         fileName: file?.name,
         fileBytes: bytes,
-        pastedText: toolInstructions.trim().isEmpty
-            ? null
-            : toolInstructions.trim(),
+        pastedText:
+            toolInstructions.trim().isEmpty ? null : toolInstructions.trim(),
       );
 
       if (!mounted) return;
 
-      final finalCreditCost = response.creditCost > 0
-          ? response.creditCost
-          : access.creditCost;
+      final finalCreditCost =
+          response.creditCost > 0 ? response.creditCost : access.creditCost;
 
       ref.read(walletProvider.notifier).spendCredits(finalCreditCost);
-      ref
-          .read(transactionProvider.notifier)
-          .addAiPrompt(
+      ref.read(transactionProvider.notifier).addAiPrompt(
             model: selectedTool.label,
             creditCost: finalCreditCost,
           );
@@ -152,7 +145,6 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
       });
     } catch (error) {
       if (!mounted) return;
-
       setState(() => isProcessing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -167,7 +159,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
     final utilityPricing = ref.watch(utilityPricingProvider);
-    final pricing = utilityPricing.valueOrNull;
+    final pricing = utilityPricing.asData?.value;
     final selectedCreditCost = _adminCostFor(pricing, selectedTool);
     final hasInput =
         selectedFile != null || _notesController.text.trim().isNotEmpty;
@@ -238,7 +230,7 @@ class _AiLabViewState extends ConsumerState<AiLabView> {
               creditCost: selectedCreditCost,
               hasInput: hasInput,
               isProcessing: isProcessing,
-              onRun: () => _runTool(selectedCreditCost),
+              onRun: _runTool,
             ),
             const SizedBox(height: 20),
             if (isProcessing) const _ProcessingState(),
@@ -268,7 +260,10 @@ class _PricingLoadingBanner extends StatelessWidget {
           SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: PeraXColors.cyan),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: PeraXColors.cyan,
+            ),
           ),
           SizedBox(width: 10),
           Expanded(
@@ -622,3 +617,235 @@ class _DocumentUploadCard extends StatelessWidget {
                   selected?.name ?? 'Upload document optional',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'PDF, Word, or TXT. You can also paste text below.',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (selected == null)
+            IconButton(
+              onPressed: onPickDocument,
+              icon: const Icon(Icons.add_rounded, color: PeraXColors.cyan),
+            )
+          else
+            IconButton(
+              onPressed: onClear,
+              icon: const Icon(Icons.close_rounded, color: Colors.orange),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OptionalNotes extends StatelessWidget {
+  final TextEditingController controller;
+  final AiDocumentTool selectedTool;
+  final String selectedTone;
+  final VoidCallback onChanged;
+
+  const _OptionalNotes({
+    required this.controller,
+    required this.selectedTool,
+    required this.selectedTone,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hint = selectedTool == AiDocumentTool.humanizer
+        ? 'Paste text or add rewriting instruction. Tone: $selectedTone.'
+        : 'Paste text here or add optional notes for the AI scan.';
+
+    return GlassCard(
+      radius: 24,
+      padding: const EdgeInsets.all(18),
+      child: TextField(
+        controller: controller,
+        onChanged: (_) => onChanged(),
+        minLines: 4,
+        maxLines: 8,
+        style: const TextStyle(color: Colors.white, height: 1.4),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white38),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+}
+
+class _RunPanel extends StatelessWidget {
+  final AiDocumentTool tool;
+  final double creditCost;
+  final bool hasInput;
+  final bool isProcessing;
+  final VoidCallback onRun;
+
+  const _RunPanel({
+    required this.tool,
+    required this.creditCost,
+    required this.hasInput,
+    required this.isProcessing,
+    required this.onRun,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: hasInput && !isProcessing ? onRun : null,
+      icon: Icon(isProcessing ? Icons.hourglass_bottom_rounded : Icons.auto_awesome_rounded),
+      label: Text(
+        isProcessing
+            ? 'PROCESSING ${tool.label.toUpperCase()}'
+            : 'RUN ${tool.label.toUpperCase()} • ${creditCost.toStringAsFixed(0)} CREDITS',
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: PeraXColors.cyan,
+        foregroundColor: PeraXColors.darkBlue,
+        disabledBackgroundColor: Colors.white10,
+        disabledForegroundColor: Colors.white30,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        textStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+    );
+  }
+}
+
+class _ProcessingState extends StatelessWidget {
+  const _ProcessingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const GlassCard(
+      radius: 24,
+      padding: EdgeInsets.all(18),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: PeraXColors.cyan,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Backend is confirming Credits and processing the AI task...',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultPanel extends StatelessWidget {
+  final AiDocumentResultDto result;
+
+  const _ResultPanel({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      radius: 28,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  result.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+              Text(
+                '${result.score.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  color: getAiScoreColor(result.score),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            result.summary,
+            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${result.creditCost.toStringAsFixed(0)} Credits charged',
+            style: const TextStyle(
+              color: PeraXColors.cyan,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...result.findings.map(
+            (finding) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: PeraXColors.cyan, size: 17),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      finding,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: PeraXColors.surfaceBlue.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: PeraXColors.glassBorder),
+            ),
+            child: Text(
+              result.output,
+              style: const TextStyle(color: Colors.white70, height: 1.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
