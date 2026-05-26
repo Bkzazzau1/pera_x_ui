@@ -22,7 +22,6 @@ class _MainShellState extends State<MainShell>
   @override
   void initState() {
     super.initState();
-    // Premium Ambient Engine: Pulsing background that drives the "Living UI"
     _ambientController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),
@@ -44,6 +43,7 @@ class _MainShellState extends State<MainShell>
     if (location.startsWith('/credits')) return 5;
     if (location.startsWith('/market')) return 6;
     if (location.startsWith('/checkout')) return 7;
+    if (location.startsWith('/admin-pricing')) return 8;
     return 0;
   }
 
@@ -73,6 +73,9 @@ class _MainShellState extends State<MainShell>
       case 7:
         context.go('/checkout');
         break;
+      case 8:
+        context.go('/admin-pricing');
+        break;
     }
   }
 
@@ -87,7 +90,6 @@ class _MainShellState extends State<MainShell>
         builder: (context, child) {
           return Stack(
             children: [
-              // 1. The Living Radial Gradient Background
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -102,8 +104,6 @@ class _MainShellState extends State<MainShell>
                   ),
                 ),
               ),
-
-              // 2. The Exceptional Pera-X Neural Mesh Pattern
               Positioned.fill(
                 child: CustomPaint(
                   painter: NeuralBackgroundPainter(
@@ -111,7 +111,6 @@ class _MainShellState extends State<MainShell>
                   ),
                 ),
               ),
-
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isDesktop = constraints.maxWidth >= 900;
@@ -148,7 +147,6 @@ class _MainShellState extends State<MainShell>
   }
 }
 
-/// Exceptional Geometric Pattern inspired by neural nodes and circuit traces
 class NeuralBackgroundPainter extends CustomPainter {
   final double animationValue;
 
@@ -157,16 +155,14 @@ class NeuralBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = PeraXColors.cyan
-          .withValues(alpha: 0.04) // Subtle institutional aesthetic
+      ..color = PeraXColors.cyan.withValues(alpha: 0.04)
       ..strokeWidth = 0.8
       ..style = PaintingStyle.stroke;
 
-    final spacing = 44.0;
+    const spacing = 44.0;
 
     for (double i = 0; i < size.width; i += spacing) {
       for (double j = 0; j < size.height; j += spacing) {
-        // Breathing offset to simulate a living L1 ledger
         final offset = 5 * animationValue;
 
         if ((i / spacing).toInt() % 2 == 0) {
@@ -268,7 +264,6 @@ class _BrandHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        // Cleaned Header: "FINTECH 2050" removed per Request
         const Text(
           'Pera-X',
           style: TextStyle(
@@ -362,7 +357,7 @@ class _NetworkStatusWidget extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               const Text(
-                'Network Healthy',
+                'Pricing Synced',
                 style: TextStyle(
                   color: PeraXColors.cyan,
                   fontWeight: FontWeight.w900,
@@ -373,11 +368,11 @@ class _NetworkStatusWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Solana L1 Protocol',
+            'Backend Source of Truth',
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           const Text(
-            '1,248 TPS',
+            'Credits Engine',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -394,10 +389,7 @@ class _MobileBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
 
-  const _MobileBottomNav({
-    required this.currentIndex,
-    required this.onSelected,
-  });
+  const _MobileBottomNav({required this.currentIndex, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -449,6 +441,7 @@ class _MobileBottomNav extends StatelessWidget {
 class _NavItem {
   final String label;
   final IconData icon, outlinedIcon;
+
   const _NavItem({
     required this.label,
     required this.icon,
@@ -496,5 +489,10 @@ const _navItems = [
     label: 'Checkout',
     icon: Icons.payments_rounded,
     outlinedIcon: Icons.payments_outlined,
+  ),
+  _NavItem(
+    label: 'Admin',
+    icon: Icons.admin_panel_settings_rounded,
+    outlinedIcon: Icons.admin_panel_settings_outlined,
   ),
 ];
