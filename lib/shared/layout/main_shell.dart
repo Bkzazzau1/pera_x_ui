@@ -331,7 +331,7 @@ class _NetworkStatusWidget extends StatelessWidget {
               _StatusDot(),
               SizedBox(width: 10),
               Text(
-                'Pricing Synced',
+                'Protocol Synced',
                 style: TextStyle(
                   color: PeraXColors.cyan,
                   fontWeight: FontWeight.w900,
@@ -346,7 +346,7 @@ class _NetworkStatusWidget extends StatelessWidget {
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           Text(
-            'Credits Engine',
+            'Credits + Contract Status',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -452,6 +452,12 @@ const _publicNavItems = [
     path: '/dashboard',
     icon: Icons.dashboard_rounded,
     outlinedIcon: Icons.dashboard_outlined,
+  ),
+  _NavItem(
+    label: 'Protocol',
+    path: '/protocol',
+    icon: Icons.verified_rounded,
+    outlinedIcon: Icons.verified_outlined,
   ),
   _NavItem(
     label: 'AI Lab',
