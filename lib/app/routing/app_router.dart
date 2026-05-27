@@ -20,6 +20,7 @@ import '../../features/credits/buy_credits_view.dart';
 import '../../features/dashboard/dashboard_view.dart';
 import '../../features/market/market_view.dart';
 import '../../features/protocol/protocol_status_view.dart';
+import '../../features/utility/utility_hub_view.dart';
 import '../../features/wallet/wallet_view.dart';
 import '../../shared/layout/main_shell.dart';
 
@@ -43,6 +44,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/dashboard',
           builder: (context, state) => const DashboardView(),
+        ),
+        GoRoute(
+          path: '/utility',
+          builder: (context, state) => const UtilityHubView(),
         ),
         GoRoute(
           path: '/protocol',
