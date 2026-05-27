@@ -19,6 +19,7 @@ import '../../features/checkout/checkout_view.dart';
 import '../../features/credits/buy_credits_view.dart';
 import '../../features/dashboard/dashboard_view.dart';
 import '../../features/market/market_view.dart';
+import '../../features/protocol/protocol_status_view.dart';
 import '../../features/wallet/wallet_view.dart';
 import '../../shared/layout/main_shell.dart';
 
@@ -42,6 +43,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/dashboard',
           builder: (context, state) => const DashboardView(),
+        ),
+        GoRoute(
+          path: '/protocol',
+          builder: (context, state) => const ProtocolStatusView(),
         ),
         GoRoute(
           path: '/admin-pricing',
