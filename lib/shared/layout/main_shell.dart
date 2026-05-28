@@ -331,7 +331,7 @@ class _NetworkStatusWidget extends StatelessWidget {
               _StatusDot(),
               SizedBox(width: 10),
               Text(
-                'Protocol Synced',
+                'Utility Catalog Synced',
                 style: TextStyle(
                   color: PeraXColors.cyan,
                   fontWeight: FontWeight.w900,
@@ -346,7 +346,7 @@ class _NetworkStatusWidget extends StatelessWidget {
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           Text(
-            'Credits + Contract Status',
+            'Credits + Services Hub',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -452,6 +452,12 @@ const _publicNavItems = [
     path: '/dashboard',
     icon: Icons.dashboard_rounded,
     outlinedIcon: Icons.dashboard_outlined,
+  ),
+  _NavItem(
+    label: 'Utility',
+    path: '/utility',
+    icon: Icons.grid_view_rounded,
+    outlinedIcon: Icons.grid_view_outlined,
   ),
   _NavItem(
     label: 'Protocol',
